@@ -1,0 +1,3 @@
+req.txt
+node_modules/*
+dist/*
