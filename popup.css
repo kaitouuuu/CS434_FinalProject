@@ -1,2 +1,11 @@
-body { font-family: sans-serif; padding: 10px; width: 250px; }
-input, button { width: 100%; margin: 4px 0; padding: 4px; }
+body {
+  font-family: sans-serif;
+  padding: 10px;
+  width: 250px;
+}
+input,
+button {
+  width: 100%;
+  margin: 4px 0;
+  padding: 4px;
+}

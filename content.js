@@ -1,3 +1,4 @@
+import * as tldts from 'tldts';
 chrome.runtime.sendMessage(
   { type: "MATCH", domain: tldts.parse(window.location.hostname).domain },
   (creds) => {
