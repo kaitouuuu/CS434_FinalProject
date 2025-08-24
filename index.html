@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Vault Demo (idb-keyval + WebCrypto)</title>
+    <script type="module">
+        import { get, set } from "https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm";
+
+        const enc = new TextEncoder();
+
+        // ---------- helpers ----------
+        function getRandomBytes(len) {
+            const a = new Uint8Array(len);
+            crypto.getRandomValues(a);
+            return a;
+        }
+
+        function b64(buf) {
+            return btoa(String.fromCharCode(...new Uint8Array(buf)));
+        }
+
+        function abFromB64(str) {
+            return Uint8Array.from(atob(str), c => c.charCodeAt(0));
+        }
+
+        async function pbkdf2Bits(password, salt, iterations, length = 256) {
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]
+            );
+            return crypto.subtle.deriveBits(
+                { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+                keyMaterial,
+                length
+            );
+        }
+
+        // ---------- sign-up ----------
+        async function checkExistingVault(email) {
+            const vault = await get("vault");
+            if (!vault) return false;
+
+            // Here you could add more sophisticated checks, e.g., matching email
+            return true;
+        }
+
+        async function createVault(email, password) {
+            if (await checkExistingVault(email)) {
+                throw new Error("Vault already exists for this email");
+            }
+            const salt = getRandomBytes(16);
+            const iter = 200000;
+
+            const derivedBits = await pbkdf2Bits(password, salt, iter, 256);
+            // just store derived key as verifier (simplified)
+            const verifierB64 = b64(derivedBits);
+
+            const vault = {
+                kdf: { salt: b64(salt), iter },
+                verifier: verifierB64,
+                items: []
+            };
+
+            await set("vault", vault);
+            console.log("Vault stored:", vault);
+            return vault;
+        }
+
+        // ---------- sign-in ----------
+        async function verifyVault(password) {
+            const vault = await get("vault");
+            if (!vault) return { ok: false, reason: "No vault found" };
+
+            const salt = abFromB64(vault.kdf.salt);
+            const derivedBits = await pbkdf2Bits(password, salt, vault.kdf.iter, 256);
+            const candidate = b64(derivedBits);
+
+            const ok = candidate === vault.verifier;
+            return { ok, vault };
+        }
+
+        // ---------- demo buttons ----------
+        document.addEventListener("DOMContentLoaded", () => {
+            const signupBtn = document.getElementById("signup");
+            const signinBtn = document.getElementById("signin");
+            const email = document.getElementById("email");
+            const pass = document.getElementById("pass");
+            const status = document.getElementById("status");
+
+            signupBtn.onclick = async () => {
+                const v = await createVault(email.value, pass.value);
+                status.textContent = "Vault created!";
+                console.log(v);
+            };
+
+            signinBtn.onclick = async () => {
+                const res = await verifyVault(pass.value);
+                status.textContent = res.ok ? "✔ Verified" : "✖ Wrong password";
+                console.log(res);
+            };
+        });
+    </script>
+</head>
+
+<body>
+    <h1>Vault Demo (local IndexedDB)</h1>
+    <div>
+        <input id="email" placeholder="email" />
+        <input id="pass" type="password" placeholder="master password" />
+    </div>
+    <button id="signup">Create Vault</button>
+    <button id="signin">Verify Vault</button>
+    <p id="status"></p>
+</body>
+
+</html>
