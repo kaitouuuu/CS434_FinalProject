@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Mini Local Password Manager",
+  "version": "1.0.0",
+  "description": "Local-only password manager (AES-GCM, PBKDF2).",
+  "permissions": ["storage", "scripting", "activeTab"],
+  "host_permissions": ["https://*/*"],
+  "background": { "service_worker": "bg.js" },
+  "action": { "default_popup": "popup.html" },
+  "content_scripts": [{
+    "matches": ["https://*/*"],
+    "js": ["vendor/tldts.min.js", "content.js"],
+    "run_at": "document_idle"
+  }]
+}
