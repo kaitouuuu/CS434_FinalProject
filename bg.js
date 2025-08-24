@@ -103,6 +103,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } else {
         sendResponse(null);
       }
+    } else if (msg.type === "LOCK") {
+      MEK = null;
+      vaultCache = null;
+      sendResponse({ ok: true });
     }
   })();
   return true; // keep channel alive
