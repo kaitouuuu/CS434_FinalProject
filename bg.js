@@ -122,6 +122,11 @@ async function handleChangeMasterPassword(msg, sendResponse) {
   sendResponse(result);
 }
 
+async function handleGetAutofillSetting(msg, sendResponse) {
+  const result = await stateManager.getAutofillSetting();
+  sendResponse(result);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "SET_MASTER":
@@ -159,6 +164,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "CHANGE_MASTER_PASSWORD":
       handleChangeMasterPassword(msg, sendResponse);
+      break;
+    case "GET_AUTOFILL_SETTING":
+      handleGetAutofillSetting(msg, sendResponse);
       break;
     default:
       sendResponse(null);

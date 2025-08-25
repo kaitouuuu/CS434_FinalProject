@@ -1,6 +1,7 @@
 import * as idbKeyval from "idb-keyval";
 import * as nanoId from "nanoid";
 import cryptoHelper from "./crypto-helper.js";
+import * as tldts from "tldts";
 
 class StateManager {
   constructor() {
@@ -66,7 +67,14 @@ class StateManager {
 
   async match(domain) {
     if (!this.MEK || !this.vaultCache) return null;
-    const matches = this.vaultCache.items.filter((it) => it.domain === domain);
+    const inputDomain = tldts.getDomain(domain);
+    if (!inputDomain || tldts.isPublicSuffix(inputDomain)) {
+      return { ok: false, error: "Invalid domain" };
+    }
+    const matches = this.vaultCache.items.filter((it) => {
+      const vaultDomain = tldts.getDomain(it.domain);
+      return vaultDomain === inputDomain;
+    });
     if (!matches.length) return [];
     const result = await Promise.all(
       matches.map(async (item) => {
@@ -195,6 +203,11 @@ class StateManager {
     this.vaultCache = vault;
 
     return { ok: true };
+  }
+
+  async getAutofillSetting() {
+    const setting = await idbKeyval.get("autofillSetting");
+    return { ok: !!setting };
   }
 }
 
