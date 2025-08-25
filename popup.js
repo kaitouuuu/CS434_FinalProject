@@ -209,6 +209,9 @@ function renderItemsToList(selector, items, emptyMessage) {
         <span class="item-username">${item.username}</span>
       </div>
       <div class="item-actions">
+        <button class="icon-button fill-btn" data-id="${
+          item.id
+        }" title="Fill">✏️</button>
         <button class="icon-button view-btn" data-id="${
           item.id
         }" title="View/Edit">👁️</button>
@@ -239,6 +242,7 @@ function handleItemActions(container) {
       const id = target.dataset.id;
       if (target.classList.contains('view-btn')) renderItemDetailUI(id);
       else if (target.classList.contains('delete-btn')) handleDeleteItem(id);
+      else if (target.classList.contains('fill-btn')) handleFillItem(id);
     });
 }
 
@@ -248,6 +252,27 @@ async function handleDeleteItem(id) {
   const res = await send({ type: 'DELETE_ITEM', id });
   if (res && res.ok) displayVaultItems(); // Refresh the list
   else alert('Failed to delete item.');
+}
+
+async function handleFillItem(id) {
+  const res = await send({ type: 'GET_ITEM', id });
+  if (!res || !res.ok) {
+    alert('Could not retrieve item details to fill.');
+    return;
+  }
+
+  const { username, password } = res.item;
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab && tab.id) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'REQUEST_FILL',
+      username,
+      password
+    });
+
+    window.close();
+  } else alert('Could not find an active tab to fill.');
 }
 
 async function renderItemDetailUI(id) {
