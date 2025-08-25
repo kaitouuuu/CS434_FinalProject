@@ -143,15 +143,28 @@ class StateManager {
     const digits = "0123456789";
     const specials = "!@#$%^&*()-_=+[]{}|;:,.<>?";
     let chars = upper + digits;
-    if (lowercase) chars += lower;
-    if (special) chars += specials;
-    let password = "";
-    for (let i = 0; i < length; i++) {
-      const idx = Math.floor(Math.random() * chars.length);
-      password += chars[idx];
+    let required = [];
+    if (lowercase) {
+      chars += lower;
+      required.push(lower[Math.floor(Math.random() * lower.length)]);
+    }
+    if (special) {
+      chars += specials;
+      required.push(specials[Math.floor(Math.random() * specials.length)]);
     }
 
-    return password;
+    let passwordArr = [];
+    for (let i = 0; i < length - required.length; i++) {
+      const idx = Math.floor(Math.random() * chars.length);
+      passwordArr.push(chars[idx]);
+    }
+
+    passwordArr = passwordArr.concat(required);
+    for (let i = passwordArr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [passwordArr[i], passwordArr[j]] = [passwordArr[j], passwordArr[i]];
+    }
+    return passwordArr.join("");
   }
 
   async changeMasterPassword(oldMaster, newMaster) {
