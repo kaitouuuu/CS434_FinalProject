@@ -26,6 +26,31 @@ function handleLock(msg, sendResponse) {
   sendResponse(result);
 }
 
+function handleGetLockState(msg, sendResponse) {
+  const result = stateManager.getLockState();
+  sendResponse(result);
+}
+
+async function handleGetVault(msg, sendResponse) {
+  const result = await stateManager.getVault();
+  sendResponse(result);
+}
+
+function handleGetItem(msg, sendResponse) {
+  const result = stateManager.getItem(msg.id);
+  sendResponse(result);
+}
+
+async function handleSetItem(msg, sendResponse) {
+  const result = await stateManager.setItem(msg.id, msg.newData);
+  sendResponse(result);
+}
+
+async function handleDeleteItem(msg, sendResponse) {
+  const result = await stateManager.deleteItem(msg.id);
+  sendResponse(result);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "SET_MASTER":
@@ -42,6 +67,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "LOCK":
       handleLock(msg, sendResponse);
+      break;
+    case "GET_LOCK_STATE":
+      handleGetLockState(msg, sendResponse);
+      break;
+    case "GET_VAULT":
+      handleGetVault(msg, sendResponse);
+      break;
+    case "GET_ITEM":
+      handleGetItem(msg, sendResponse);
+      break;
+    case "SET_ITEM":
+      handleSetItem(msg, sendResponse);
+      break;
+    case "DELETE_ITEM":
+      handleDeleteItem(msg, sendResponse);
       break;
     default:
       sendResponse(null);

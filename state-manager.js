@@ -74,6 +74,38 @@ class StateManager {
     this.vaultCache = null;
     return { ok: true };
   }
+
+  getLockState() {
+    return { locked: !this.MEK };
+  }
+
+  async getVault() {
+    const vault = await idbKeyval.get("vault");
+    return vault || null;
+  }
+
+  getItem(id) {
+    if (!this.vaultCache) return null;
+    return this.vaultCache.items.find((item) => item.id === id) || null;
+  }
+
+  async setItem(id, newData) {
+    if (!this.vaultCache) return { ok: false };
+    const idx = this.vaultCache.items.findIndex((item) => item.id === id);
+    if (idx === -1) return { ok: false };
+    this.vaultCache.items[idx] = { ...this.vaultCache.items[idx], ...newData };
+    await idbKeyval.set("vault", this.vaultCache);
+    return { ok: true };
+  }
+
+  async deleteItem(id) {
+    if (!this.vaultCache) return { ok: false };
+    const newItems = this.vaultCache.items.filter((item) => item.id !== id);
+    if (newItems.length === this.vaultCache.items.length) return { ok: false };
+    this.vaultCache.items = newItems;
+    await idbKeyval.set("vault", this.vaultCache);
+    return { ok: true };
+  }
 }
 
 export { StateManager };
