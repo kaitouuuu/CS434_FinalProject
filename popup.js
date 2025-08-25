@@ -12,9 +12,7 @@ async function send(msg) {
           chrome.runtime.lastError.message
         );
         resolve({ ok: false, error: chrome.runtime.lastError.message });
-      } else {
-        resolve(response);
-      }
+      } else resolve(response);
     });
   });
 }
@@ -26,15 +24,11 @@ async function init() {
 
   const vault = await idbKeyval.get('vault');
 
-  if (!vault) {
-    renderFirstRunUI();
-  } else {
+  if (!vault) renderFirstRunUI();
+  else {
     const state = await send({ type: 'GET_LOCK_STATE' });
-    if (!state.ok) {
-      renderUnlockedUI();
-    } else {
-      renderLockedUI();
-    }
+    if (!state.ok) renderUnlockedUI();
+    else renderLockedUI();
   }
 }
 
@@ -64,11 +58,8 @@ function renderFirstRunUI() {
         return;
       }
       const res = await send({ type: 'SET_MASTER', master: m1 });
-      if (res.ok) {
-        init();
-      } else {
-        alert('Error creating vault.');
-      }
+      if (res.ok) init();
+      else alert('Error creating vault.');
     });
 }
 
@@ -91,11 +82,8 @@ function renderLockedUI() {
       e.preventDefault();
       const master = document.getElementById('master').value;
       const res = await send({ type: 'UNLOCK', master });
-      if (res && res.ok) {
-        init(); // Re-initialize to show the unlocked view
-      } else {
-        alert('Incorrect Master Password!');
-      }
+      if (res && res.ok) init(); // Re-initialize to show the unlocked view
+      else alert('Incorrect Master Password!');
     });
 }
 
@@ -109,14 +97,7 @@ function renderUnlockedUI() {
             <button id="lock-btn">Lock</button>
         </div>
         <div class="card">
-            <h4>Add New Login</h4>
-            <form id="add-login-form">
-                <input type="text" id="title" placeholder="Title (e.g., Google)" />
-                <input type="text" id="domain" placeholder="Domain (e.g., google.com)" required />
-                <input type="text" id="username" placeholder="Username/Email" required />
-                <input type="password" id="password" placeholder="Password" required />
-                <button type="submit">Save</button>
-            </form>
+            <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
         </div>
         <div class="card">
             <h4>Logins for this site</h4>
@@ -135,6 +116,41 @@ function renderUnlockedUI() {
   });
 
   document
+    .getElementById('add-login-btn')
+    .addEventListener('click', () => renderAddLoginUI());
+
+  displayVaultItems();
+}
+
+// Renders the Add Login form UI (full screen)
+async function renderAddLoginUI() {
+  const app = document.getElementById('app');
+
+  // Get current tab domain for default value
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const currentHostname = tab ? parse(tab.url).hostname : '';
+
+  app.innerHTML = `
+    <div class="container">
+        <div class="header">
+            <button id="back-btn" class="back-button">← Back</button>
+            <h3>Add New Login</h3>
+        </div>
+        <form id="add-login-form" class="add-login-form">
+            <input type="text" id="title" placeholder="Title (e.g., Google)" />
+            <input type="text" id="domain" placeholder="Domain (e.g., google.com)" value="${currentHostname}" required />
+            <input type="text" id="username" placeholder="Username/Email" required />
+            <input type="password" id="password" placeholder="Password" required />
+            <button type="submit" class="save-button">Save Login</button>
+        </form>
+    </div>
+  `;
+
+  document
+    .getElementById('back-btn')
+    .addEventListener('click', () => renderUnlockedUI());
+
+  document
     .getElementById('add-login-form')
     .addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -147,25 +163,20 @@ function renderUnlockedUI() {
       };
       const res = await send({ type: 'ADD_LOGIN', item });
       if (res && res.ok) {
-        alert('Login added!');
-        form.reset();
-        displayVaultItems(); // Refresh lists
-      } else {
-        alert('Failed to add login.');
-      }
+        alert('Login added successfully!');
+        renderUnlockedUI(); // Go back to main screen
+      } else alert('Failed to add login.');
     });
-
-  displayVaultItems();
 }
 
 async function displayVaultItems() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const currentDomain = tab ? parse(tab.url).domain : null;
+  const currentHostname = tab ? parse(tab.url).hostname : '';
 
   const vaultRes = await send({ type: 'GET_VAULT' });
   const allItems = vaultRes ? vaultRes : [];
 
-  const matchRes = await send({ type: 'MATCH', domain: currentDomain });
+  const matchRes = await send({ type: 'MATCH', domain: currentHostname });
   const matchingItems = matchRes ? matchRes : [];
 
   renderItemsToList(
@@ -193,13 +204,149 @@ function renderItemsToList(selector, items, emptyMessage) {
     const li = document.createElement('li');
     li.className = 'item-entry';
     li.innerHTML = `
-      <p class="item-title">${item.title || item.domain}</p>
-      <p class="item-username">${item.username}</p>
+      <div class="item-info">
+        <span class="item-title">${item.title || item.domain}</span>
+        <span class="item-username">${item.username}</span>
+      </div>
+      <div class="item-actions">
+        <button class="icon-button view-btn" data-id="${
+          item.id
+        }" title="View/Edit">👁️</button>
+        <button class="icon-button delete-btn" data-id="${
+          item.id
+        }" title="Delete">🗑️</button>
+      </div>
     `;
     list.appendChild(li);
   });
 
   container.appendChild(list);
+  handleItemActions(container);
+}
+
+function handleItemActions(container) {
+  container.replaceWith(container.cloneNode(true));
+  document
+    .querySelector(
+      container.id === 'current-item-list'
+        ? '#current-item-list'
+        : '#all-item-list'
+    )
+    .addEventListener('click', (e) => {
+      const target = e.target.closest('.icon-button');
+      if (!target) return;
+
+      const id = target.dataset.id;
+      if (target.classList.contains('view-btn')) renderItemDetailUI(id);
+      else if (target.classList.contains('delete-btn')) handleDeleteItem(id);
+    });
+}
+
+async function handleDeleteItem(id) {
+  if (!confirm('Are you sure you want to delete this item?')) return;
+
+  const res = await send({ type: 'DELETE_ITEM', id });
+  if (res && res.ok) displayVaultItems(); // Refresh the list
+  else alert('Failed to delete item.');
+}
+
+async function renderItemDetailUI(id) {
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="container"><p>Loading item...</p></div>`;
+
+  const res = await send({ type: 'GET_ITEM', id });
+  if (!res || !res.ok) {
+    alert('Could not load item details.');
+    renderUnlockedUI(); // Go back
+    return;
+  }
+
+  const item = res.item;
+
+  app.innerHTML = `
+    <div class="container full-screen">
+        <div class="header">
+            <button id="back-btn" class="back-button">← Back</button>
+            <h3>Edit Item</h3>
+        </div>
+        <form id="edit-item-form" class="edit-item-form">
+            <label for="title">Title</label>
+            <input type="text" id="title" value="${item.title || ''}" />
+
+            <label for="domain">Domain</label>
+            <input type="text" id="domain" value="${item.domain}" required />
+
+            <label for="username">Username</label>
+            <div class="input-group">
+                <input type="text" id="username" value="${
+                  item.username
+                }" required />
+                <button type="button" class="copy-btn" data-copy-target="username">Copy</button>
+            </div>
+
+            <label for="password">Password</label>
+            <div class="input-group">
+                <input type="password" id="password" value="${
+                  item.password
+                }" required />
+                <button type="button" class="icon-button" id="toggle-password">👁️</button>
+                <button type="button" class="copy-btn" data-copy-target="password">Copy</button>
+            </div>
+
+            <button type="submit" class="save-button">Save Changes</button>
+        </form>
+    </div>
+  `;
+
+  document
+    .getElementById('back-btn')
+    .addEventListener('click', () => renderUnlockedUI());
+
+  document.getElementById('toggle-password').addEventListener('click', () => {
+    const passInput = document.getElementById('password');
+    const isPassword = passInput.type === 'password';
+    passInput.type = isPassword ? 'text' : 'password';
+  });
+
+  // Handle copy buttons
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const targetId = e.target.dataset.copyTarget;
+      const textToCopy = document.getElementById(targetId).value;
+      navigator.clipboard
+        .writeText(textToCopy)
+        .then(() => {
+          e.target.textContent = 'Copied!';
+          setTimeout(() => {
+            e.target.textContent = 'Copy';
+          }, 1500);
+        })
+        .catch((err) => {
+          console.error('Failed to copy: ', err);
+          alert('Failed to copy to clipboard.');
+        });
+    });
+  });
+
+  document
+    .getElementById('edit-item-form')
+    .addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const updatedItem = {
+        id: item.id,
+        title: form.title.value,
+        domain: form.domain.value,
+        username: form.username.value,
+        password: form.password.value
+      };
+
+      const setRes = await send({ type: 'SET_ITEM', item: updatedItem });
+      if (setRes && setRes.ok) {
+        alert('Item updated successfully!');
+        renderUnlockedUI();
+      } else alert('Failed to update item.');
+    });
 }
 
 // Start the app
