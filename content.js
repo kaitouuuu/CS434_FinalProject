@@ -1,60 +1,101 @@
-import { get } from 'idb-keyval';
-import * as tldts from 'tldts';
+// content.js — manual & auto flows, fixed and consistent (no imports)
 
 init();
 
 function init() {
-  chrome.runtime.sendMessage({ type: "GET_AUTOFILL_SETTING" }, (resp) => {
-    const enabled = !!(resp && resp.enabled);
-    if (enabled) {
-      if(!isSafeContext()) return;
-      startAuto(); // Autofill enabled in setting
-    }
-    else startManual(); // Press the pop-up thing
-  });
+  // Start in manual mode by default (popup triggers fill).
+  startManual();
+
+  // If you want auto mode via a setting, uncomment:
+  // chrome.runtime.sendMessage({ type: "GET_AUTOFILL_SETTING" }, (resp) => {
+  //   const enabled = !!(resp && resp.enabled);
+  //   if (enabled) {
+  //     if (!isSafeContext()) return; // only on HTTPS / localhost
+  //     startAuto();
+  //   } else {
+  //     startManual();
+  //   }
+  // });
 }
+
+/* ------------------------- Flow A: Autofill enabled ------------------------- */
 
 function startAuto() {
-  tryFill();
-  watchUrlChanges(() => tryFill());
+  tryFillAuto();                           // on initial load
+  watchUrlChanges(() => tryFillAuto());    // on SPA navigations
 }
 
+function tryFillAuto() {
+  const domain = normalizeDomain(location.hostname);
+  requestAndFill(domain);
+}
+
+/* ------------------------- Flow B: Manual (popup) --------------------------- */
+
 function startManual() {
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "REQUEST_FILL") {
-      tryFill();
+  console.log("content.js: manual mode ready");
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg || msg.type !== "REQUEST_FILL") return;
+    console.log("content.js: REQUEST_FILL received");
+
+    // If popup provided explicit creds, use them directly.
+    if (msg.username && msg.password) {
+      fillWithObserver({ u: msg.username, p: msg.password });
+      return;
     }
+
+    // Otherwise, ask background to match this page.
+    tryFillManual();
   });
 }
 
-function normalizeDomain(hostname, tldtsApi) {
-  const parsed = tldtsApi.parse(hostname);
-  return parsed.domain || hostname;
+function tryFillManual() {
+  const domain = normalizeDomain(location.hostname);
+  requestAndFill(domain);
+}
+
+/* ------------------------------- Core helpers ------------------------------- */
+
+function requestAndFill(domain) {
+  chrome.runtime.sendMessage({ type: "MATCH", domain }, (creds) => {
+    if (chrome.runtime.lastError) {
+      console.warn("content.js: sendMessage error:", chrome.runtime.lastError.message);
+      return;
+    }
+    if (!creds) return; // no match
+
+    fillWithObserver(creds);
+  });
+}
+
+function fillWithObserver(creds) {
+  // Try immediately; if fields aren't present yet, watch until they appear.
+  if (applyCreds(creds)) return true;
+
+  const observer = new MutationObserver(() => {
+    if (applyCreds(creds)) {
+      observer.disconnect();
+    }
+  });
+
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  // Safety timeout so we don't observe forever on pages without forms
+  setTimeout(() => observer.disconnect(), 15000);
+  return false;
+}
+
+function normalizeDomain(hostname) {
+  // Keep consistent with how you store/query in bg.js / popup.js.
+  // Using raw hostname here (e.g., "www.example.com").
+  return hostname;
 }
 
 function isSafeContext() {
-  return location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
-}
-
-function findPasswordField() {
-  const nodes = Array.from(document.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])')).filter(isVisible);
-  return nodes.length > 0 ? nodes[0] : null;
-}
-
-function findUsernameField(root) {
-  const sel = [
-    'input[name*=user i]',
-    'input[name*=login i]',
-    'input[name*=email i]',
-    'input[type="text"]',
-    'input[type="email"]'
-  ].join(',');
-  
-  const nodes = Array.from(
-    root.querySelectorAll(`:is(${sel}):not([disabled]):not([readonly])`).filter(isVisible)
+  return (
+    location.protocol === "https:" ||
+    location.hostname === "localhost" ||
+    location.hostname === "127.0.0.1"
   );
-
-  return nodes.length > 0 ? nodes[0] : null;
 }
 
 function applyCreds(creds) {
@@ -69,32 +110,63 @@ function applyCreds(creds) {
   return true;
 }
 
+function findPasswordField() {
+  const nodes = Array.from(
+    document.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])')
+  ).filter(isVisible);
+  return nodes.length > 0 ? nodes[0] : null;
+}
+
+function findUsernameField(root) {
+  const sel = [
+    'input[name*=user i]',
+    'input[name*=login i]',
+    'input[name*=email i]',
+    'input[type="text"]',
+    'input[type="email"]'
+  ].join(',');
+
+  const nodes = Array.from(
+    root.querySelectorAll(`:is(${sel}):not([disabled]):not([readonly])`)
+  ).filter(isVisible);
+
+  return nodes.length > 0 ? nodes[0] : null;
+}
+
+function fill(el, value, opts = {}) {
+  const { fireChange = false, keepFocus = true } = opts;
+
+  // Remember current focus
+  const prev = document.activeElement;
+
+  // Use the native setter so frameworks detect the change
+  const proto = el.constructor === HTMLTextAreaElement
+    ? HTMLTextAreaElement.prototype
+    : HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  if (setter) setter.call(el, value);
+  else el.value = value; // fallback
+
+  // Dispatch an input-like event (what typing would do)
+  el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+  // Only send change if a site needs it (rare; can hide eye icons on some UIs)
+  if (fireChange) {
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Restore previous focus if desired
+  if (keepFocus && prev && prev !== el) prev.focus();
+}
+
+
 function isVisible(element) {
   const r = element.getBoundingClientRect();
   const cs = getComputedStyle(element);
   return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";
 }
 
-function fill(element, value) {
-  if (element.value === value) return;
-  element.focus();
-  element.value = value;
-  element.dispatchEvent(new Event("input", { bubbles: true }));
-  element.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function tryFill() {
-  const domain = normalizeDomain(location.hostname, tldts);
-  chrome.runtime.sendMessage({ type: "MATCH", domain }, (creds) => {
-    if (!creds || chrome.runtime.lastError) return;
-    if(!applyCreds(creds)) {
-      const observer = new MutationObserver(() => {
-        if (applyCreds(creds)) observer.disconnect();
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    }
-  });
-}
+/* ---------------------- SPA URL change detector ---------------------- */
 
 function watchUrlChanges(onChange) {
   if (window.__watchUrlChangesInstalled) return;
@@ -110,36 +182,15 @@ function watchUrlChanges(onChange) {
     const orig = history[type];
     history[type] = function (...args) {
       const ret = orig.apply(this, args);
-      window.dispatchEvent(new Event('locationchange'));
+      window.dispatchEvent(new Event("locationchange"));
       return ret;
     };
   };
 
-  wrap('pushState');
-  wrap('replaceState');
+  wrap("pushState");
+  wrap("replaceState");
 
-  window.addEventListener('popstate', () => window.dispatchEvent(new Event('locationchange')));
-  window.addEventListener('hashchange', () => window.dispatchEvent(new Event('locationchange')));
-  window.addEventListener('locationchange', fire);
+  window.addEventListener("popstate", () => window.dispatchEvent(new Event("locationchange")));
+  window.addEventListener("hashchange", () => window.dispatchEvent(new Event("locationchange")));
+  window.addEventListener("locationchange", fire);
 }
-
-// chrome.runtime.sendMessage(
-//   { type: "MATCH", domain: tldts.parse(window.location.hostname).domain },
-//   (creds) => {
-//     if (!creds) return;
-//     const pass = document.querySelector(
-//       'input[type="password"]:not([disabled])'
-//     );
-//     if (!pass) return;
-//     const form = pass.form || document;
-//     const user = form.querySelector('input[type="text"], input[type="email"]');
-//     if (user) {
-//       user.value = creds.u;
-//       user.dispatchEvent(new Event("input", { bubbles: true }));
-//       user.dispatchEvent(new Event("change", { bubbles: true }));
-//     }
-//     pass.value = creds.p;
-//     pass.dispatchEvent(new Event("input", { bubbles: true }));
-//     pass.dispatchEvent(new Event("change", { bubbles: true }));
-//   }
-// );
