@@ -57,7 +57,7 @@ button {
 }
 
 button:hover {
-  background-color: #0056b3;
+  background-color: #c4d0dc;
 }
 
 .header {
@@ -263,8 +263,10 @@ button:hover {
   left: 0;
   right: 0;
   display: flex;
-  background: #f4f4f4;
-  border-top: 1px solid #ccc;
+  background: #f8f8f8;
+  border-top: 2px solid #bbb;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  height: 60px;
 }
 
 .tab-btn {
@@ -273,10 +275,17 @@ button:hover {
   border: none;
   background: transparent;
   font-size: 16px;
+  font-weight: 500;
+  color: #555;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .tab-btn.active {
-  background: #ddd;
+
   font-weight: bold;
+  background: #007bff;
+  /* blue active tab */
+  color: #fff;
+  border-top: 3px solid #0056b3;
 }
