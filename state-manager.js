@@ -8,7 +8,6 @@ class StateManager {
     this.vaultCache = null;
   }
 
-  // Helper to decrypt a vault item
   async decryptItem(item) {
     if (!this.MEK) throw new Error("Locked");
     const data = await cryptoHelper.aesGcmDecrypt(
@@ -115,7 +114,6 @@ class StateManager {
     if (!this.vaultCache) return { ok: false };
     const idx = this.vaultCache.items.findIndex((item) => item.id === id);
     if (idx === -1) return { ok: false };
-    // Re-encrypt username/password if provided
     let updated = { ...this.vaultCache.items[idx] };
     if (newData.username !== undefined && newData.password !== undefined) {
       const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(this.MEK, {
@@ -136,6 +134,53 @@ class StateManager {
     if (newItems.length === this.vaultCache.items.length) return { ok: false };
     this.vaultCache.items = newItems;
     await idbKeyval.set("vault", this.vaultCache);
+    return { ok: true };
+  }
+
+  generatePassword({ length = 12, lowercase = false, special = false } = {}) {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const digits = "0123456789";
+    const specials = "!@#$%^&*()-_=+[]{}|;:,.<>?";
+    let chars = upper + digits;
+    if (lowercase) chars += lower;
+    if (special) chars += specials;
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      const idx = Math.floor(Math.random() * chars.length);
+      password += chars[idx];
+    }
+
+    return password;
+  }
+
+  async changeMasterPassword(oldMaster, newMaster) {
+    const vault = await idbKeyval.get("vault");
+    if (!vault) return { ok: false, error: "No vault" };
+    const salt = Uint8Array.from(atob(vault.kdf.salt), (c) => c.charCodeAt(0));
+    const key = await cryptoHelper.deriveKeyPBKDF2(
+      oldMaster,
+      salt,
+      vault.kdf.iter
+    );
+    const v2 = await cryptoHelper.hmacVerify(key, "verify");
+    const v2_b64 = btoa(String.fromCharCode(...new Uint8Array(v2)));
+    if (v2_b64 !== vault.verifier)
+      return { ok: false, error: "Old master incorrect" };
+
+    const newSalt = crypto.getRandomValues(new Uint8Array(16));
+    const newKey = await cryptoHelper.deriveKeyPBKDF2(
+      newMaster,
+      newSalt,
+      vault.kdf.iter
+    );
+    const newVerifier = await cryptoHelper.hmacVerify(newKey, "verify");
+    vault.kdf.salt = btoa(String.fromCharCode(...newSalt));
+    vault.verifier = btoa(String.fromCharCode(...new Uint8Array(newVerifier)));
+    await idbKeyval.set("vault", vault);
+    this.MEK = newKey;
+    this.vaultCache = vault;
+
     return { ok: true };
   }
 }

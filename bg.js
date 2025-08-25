@@ -107,6 +107,21 @@ async function handleDeleteItem(msg, sendResponse) {
   sendResponse({ ok: !!result.ok });
 }
 
+function handleGeneratePassword(msg, sendResponse) {
+  // msg.options: { length, lowercase, special }
+  const password = stateManager.generatePassword(msg.options || {});
+  sendResponse({ password });
+}
+
+async function handleChangeMasterPassword(msg, sendResponse) {
+  // msg.oldMaster, msg.newMaster
+  const result = await stateManager.changeMasterPassword(
+    msg.oldMaster,
+    msg.newMaster
+  );
+  sendResponse(result);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "SET_MASTER":
@@ -138,6 +153,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "DELETE_ITEM":
       handleDeleteItem(msg, sendResponse);
+      break;
+    case "GENERATE_PASSWORD":
+      handleGeneratePassword(msg, sendResponse);
+      break;
+    case "CHANGE_MASTER_PASSWORD":
+      handleChangeMasterPassword(msg, sendResponse);
       break;
     default:
       sendResponse(null);
