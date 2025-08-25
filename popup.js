@@ -1,4 +1,5 @@
 import * as idbKeyval from 'idb-keyval';
+import { parse } from 'tldts';
 
 // Helper to send messages to the background script
 async function send(msg) {
@@ -103,7 +104,7 @@ function renderUnlockedUI() {
   app.innerHTML = `
     <div class="container">
         <div class="header">
-            <h3>My vault</h3>
+            <h3>My Vault</h3>
             <button id="lock-btn">Lock</button>
         </div>
         <div class="card">
@@ -116,22 +117,20 @@ function renderUnlockedUI() {
                 <button type="submit">Save</button>
             </form>
         </div>
-        <div class="card" id="current-url">
-            <h4>Current URL Logins</h4>
-            <div id="item-list"><p>No items yet.</p></div>
+        <div class="card">
+            <h4>Logins for this site</h4>
+            <div id="current-item-list"><p>Loading...</p></div>
         </div>
-        <div class="card" id="all-logins">
+        <div class="card">
             <h4>All Logins</h4>
-            <div id="item-list"><p>No items yet.</p></div>
+            <div id="all-item-list"><p>Loading...</p></div>
         </div>
     </div>
   `;
 
   document.getElementById('lock-btn').addEventListener('click', async () => {
     const r = await send({ type: 'LOCK' });
-    if (r.ok) {
-      init();
-    }
+    if (r.ok) init();
   });
 
   document
@@ -149,10 +148,57 @@ function renderUnlockedUI() {
       if (res && res.ok) {
         alert('Login added!');
         form.reset();
+        displayVaultItems(); // Refresh lists
       } else {
         alert('Failed to add login.');
       }
     });
+
+  displayVaultItems();
+}
+
+async function displayVaultItems() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const currentDomain = tab ? parse(tab.url).domain : null;
+
+  const vaultRes = await send({ type: 'GET_VAULT' });
+  const allItems = vaultRes ? vaultRes : [];
+
+  const matchRes = await send({ type: 'MATCH', domain: currentDomain });
+  const matchingItems = matchRes ? matchRes : [];
+
+  renderItemsToList(
+    '#current-item-list',
+    matchingItems,
+    'No logins for this site.'
+  );
+  renderItemsToList('#all-item-list', allItems, 'Your vault is empty.');
+}
+
+function renderItemsToList(selector, items, emptyMessage) {
+  const container = document.querySelector(selector);
+  if (!container) return;
+
+  if (items.length === 0) {
+    container.innerHTML = `<p class="empty-state">${emptyMessage}</p>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  const list = document.createElement('ul');
+  list.className = 'item-list-ul';
+
+  items.forEach((item) => {
+    const li = document.createElement('li');
+    li.className = 'item-entry';
+    li.innerHTML = `
+      <p class="item-title">${item.title || item.domain}</p>
+      <p class="item-username">${item.username}</p>
+    `;
+    list.appendChild(li);
+  });
+
+  container.appendChild(list);
 }
 
 // Start the app

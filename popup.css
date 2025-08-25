@@ -95,7 +95,42 @@ button:hover {
   color: #333;
 }
 
-#item-list {
+#current-item-list, #all-item-list {
   max-height: 150px;
   overflow-y: auto;
+}
+
+.item-list-ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #eee;
+}
+
+.item-entry:last-child {
+  border-bottom: none;
+}
+
+.item-title {
+  font-weight: 500;
+  color: #333;
+}
+
+.item-username {
+  font-size: 13px;
+  color: #777;
+}
+
+.empty-state {
+  color: #888;
+  text-align: center;
+  padding: 10px 0;
+  font-style: italic;
 }

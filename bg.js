@@ -72,7 +72,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
     } else if (msg.type === 'GET_LOCK_STATE') {
       sendResponse({ ok: lockState });
-    } else if (msg.type === 'GET_ALL') {
+    } else if (msg.type === 'GET_VAULT') {
       if (!vaultCache) return sendResponse(null);
       sendResponse(vaultCache.items);
     }
