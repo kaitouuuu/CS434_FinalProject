@@ -222,6 +222,24 @@ button:hover {
   cursor: pointer;
 }
 
+.settings-button {
+  width: 100%;
+  background-color: #555;
+  text-align: left;
+  padding: 12px 16px;
+}
+
+.settings-button:hover {
+  background-color: #444;
+}
+
+.change-password-form label {
+  font-weight: 500;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  display: block;
+}
+
 .back-button:hover {
   background: none;
   text-decoration: underline;

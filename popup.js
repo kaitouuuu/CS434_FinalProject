@@ -121,10 +121,20 @@ function renderUnlockedUI() {
       </div>
     </div>
 
+    <div id="screen-settings" class="screen" style="display:none;">
+        <div class="header">
+            <h3>Settings</h3>
+        </div>
+        <div class="card">
+            <button id="change-password-btn" class="settings-button">Change Master Password</button>
+        </div>
+    </div>
+
     <!-- Tab navigator -->
     <div class="tab-bar">
       <button class="tab-btn active" data-screen="screen-main">Vault</button>
       <button class="tab-btn" data-screen="screen-password">Generator</button>
+      <button class="tab-btn" data-screen="screen-settings">Settings</button>
     </div>
   </div>
 `;
@@ -155,6 +165,8 @@ function renderUnlockedUI() {
     }
     document.getElementById("generated-password").textContent = pw;
   });
+
+  document.getElementById('change-password-btn').addEventListener('click', renderChangePasswordUI);
   document
     .getElementById('add-login-btn')
     .addEventListener('click', () => renderAddLoginUI());
@@ -407,6 +419,53 @@ async function renderItemDetailUI(id) {
         renderUnlockedUI();
       } else alert('Failed to update item.');
     });
+}
+
+function renderChangePasswordUI() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="container full-screen">
+        <div class="header">
+            <button id="back-btn" class="back-button">← Back</button>
+            <h3>Change Master Password</h3>
+        </div>
+        <form id="change-password-form" class="change-password-form">
+            <label for="current-password">Current Password</label>
+            <input type="password" id="current-password" required />
+
+            <label for="new-password">New Password</label>
+            <input type="password" id="new-password" required />
+
+            <label for="confirm-password">Confirm New Password</label>
+            <input type="password" id="confirm-password" required />
+
+            <button type="submit" class="save-button">Save Changes</button>
+        </form>
+    </div>
+  `;
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    renderUnlockedUI();
+  });
+
+  document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const oldMaster = document.getElementById('current-password').value;
+    const newMaster = document.getElementById('new-password').value;
+    const confirmMaster = document.getElementById('confirm-password').value;
+
+    if (newMaster !== confirmMaster) {
+      alert('New passwords do not match.');
+      return;
+    }
+
+    const res = await send({ type: 'CHANGE_PASSWORD', oldMaster, newMaster });
+    if (res.ok) {
+      alert('Master password changed successfully!');
+      renderUnlockedUI();
+    } else
+      alert(res.error);
+  });
 }
 
 // Start the app
