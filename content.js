@@ -4,7 +4,7 @@ init();
 
 function init() {
   // Start auto for your test; switch to setting-gated if you want.
-  startAuto();
+  startManual();
 
   // If you want to gate by a setting, use this instead:
   // chrome.runtime.sendMessage({ type: "GET_AUTOFILL_SETTING" }, (resp) => {
@@ -18,21 +18,11 @@ function init() {
   // });
 }
 
-/* ------------------------- Flow A: Autofill enabled ------------------------- */
-
 function startAuto() {
   console.log("content.js: auto mode ready");
   tryFill();                           // on initial load
   // watchUrlChanges(() => tryFill());    // on SPA navigations
 }
-
-async function tryFill() {
-  const domain = location.hostname;
-  console.log("content.js: trying to fill for domain:", domain);
-  requestAndFill(domain);
-}
-
-/* ------------------------- Flow B: Manual (popup) --------------------------- */
 
 function startManual() {
   console.log("content.js: manual mode ready");
@@ -51,10 +41,13 @@ function startManual() {
   });
 }
 
-/* ------------------------------- Core helpers ------------------------------- */
+async function tryFill() {
+  const domain = location.hostname;
+  console.log("content.js: trying to fill for domain:", domain);
+  requestAndFill(domain);
+}
 
 function requestAndFill(domain) {
-  // 1) Ask for matches (array of { id, title, domain, username })
   chrome.runtime.sendMessage({ type: "MATCH", domain }, (matches) => {
     if (chrome.runtime.lastError) {
       console.warn("content.js: MATCH error:", chrome.runtime.lastError.message);
@@ -62,14 +55,12 @@ function requestAndFill(domain) {
     }
 
     if (!Array.isArray(matches) || matches.length < 1) {
-      // No unambiguous match -> do nothing (or present chooser via popup)
       return;
     }
 
     const match = matches[0];
     if (!match || !match.id) return;
 
-    // 2) Fetch full item to get the password
     chrome.runtime.sendMessage({ type: "GET_ITEM", id: match.id }, (res) => {
       if (chrome.runtime.lastError) {
         console.warn("content.js: GET_ITEM error:", chrome.runtime.lastError.message);
@@ -87,7 +78,6 @@ function requestAndFill(domain) {
 }
 
 function fillWithObserver(creds) {
-  // Try immediately; if fields aren't present yet, watch until they appear.
   if (applyCreds(creds)) return true;
 
   const observer = new MutationObserver(() => {
@@ -97,7 +87,6 @@ function fillWithObserver(creds) {
   });
 
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  // Safety timeout so we don't observe forever on pages without forms
   setTimeout(() => observer.disconnect(), 15000);
   return false;
 }
@@ -124,8 +113,16 @@ function applyCreds(creds) {
   const form = pass.form || document;
   const user = findUsernameField(form);
 
-  if (user) fill(user, creds.u);
-  fill(pass, creds.p);
+  // Fill username but restore prior focus (so we can move focus to password next)
+  if (user) fill(user, creds.u, { keepFocus: true });
+
+  // For the password:
+  // 1) Focus FIRST
+  // 2) Set value via native setter
+  // 3) Dispatch input
+  // 4) Send a harmless keydown/keyup to "wake" UI (eye icon)
+  fill(pass, creds.p, { keepFocus: false, focusFirst: true, wakeKeys: true });
+
   return true;
 }
 
@@ -153,22 +150,67 @@ function findUsernameField(root) {
 }
 
 function fill(el, value, opts = {}) {
-  const { fireChange = false, keepFocus = true } = opts;
+  const {
+    fireChange = false,
+    keepFocus = false,     // default: keep focus on the target (good for password)
+    focusFirst = false,    // focus before setting value (mimics real typing better)
+    wakeKeys = false       // synthesize keydown/keyup after input
+  } = opts;
 
-  const prev = document.activeElement;
+  const previouslyFocused = document.activeElement;
 
-  // Use the native value setter so frameworks detect the change
+  if (focusFirst) {
+    // Triggers real focus/ focusin handlers the page might rely on
+    el.focus();
+  }
+
+  // Use the native setter so React/Vue controlled inputs notice
   const proto = el.constructor === HTMLTextAreaElement
     ? HTMLTextAreaElement.prototype
     : HTMLInputElement.prototype;
-  const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
   if (setter) setter.call(el, value);
-  else el.value = value; // fallback
+  else el.value = value;
 
-  el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-  if (fireChange) el.dispatchEvent(new Event('change', { bubbles: true }));
+  // Dispatch what typing would do
+  el.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
 
-  if (keepFocus && prev && prev !== el) prev.focus();
+  if (wakeKeys) {
+    // Some sites toggle UI on key events, even if value already changed.
+    wakeKeyboard(el);
+  }
+
+  if (fireChange) {
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  // Optionally restore focus to whatever had it before
+  if (keepFocus && previouslyFocused && previouslyFocused !== el) {
+    previouslyFocused.focus();
+  }
+}
+
+function wakeKeyboard(el) {
+  // Focus must be on the element for most listeners to fire
+  if (document.activeElement !== el) el.focus();
+
+  const down = new KeyboardEvent("keydown", {
+    key: "Alt",
+    code: "AltLeft",
+    keyCode: 18,
+    which: 18,
+    bubbles: true
+  });
+  const up = new KeyboardEvent("keyup", {
+    key: "Alt",
+    code: "AltLeft",
+    keyCode: 18,
+    which: 18,
+    bubbles: true
+  });
+
+  el.dispatchEvent(down);
+  el.dispatchEvent(up);
 }
 
 function isVisible(el) {
