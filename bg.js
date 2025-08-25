@@ -1,54 +1,110 @@
 import { StateManager } from "./state-manager.js";
 const stateManager = new StateManager();
 
+let autoLockTimer = null;
+const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes
+
+function resetAutoLock() {
+  if (autoLockTimer) clearTimeout(autoLockTimer);
+  autoLockTimer = setTimeout(() => {
+    stateManager.lock();
+  }, AUTO_LOCK_MS);
+}
+
 async function handleSetMaster(msg, sendResponse) {
   const result = await stateManager.setMaster(msg.master);
-  sendResponse(result);
+  if (result.ok) resetAutoLock();
+  sendResponse({ ok: !!result.ok });
 }
 
 async function handleUnlock(msg, sendResponse) {
   const result = await stateManager.unlock(msg.master);
-  sendResponse(result);
+  if (result.ok) resetAutoLock();
+  sendResponse({ ok: !!result.ok });
 }
 
 async function handleAddLogin(msg, sendResponse) {
   const result = await stateManager.addLogin(msg.item);
-  sendResponse(result);
+  if (result.ok) resetAutoLock();
+  sendResponse({ ok: !!result.ok });
 }
 
 async function handleMatch(msg, sendResponse) {
-  const result = await stateManager.match(msg.domain);
-  sendResponse(result);
+  const items = await stateManager.match(msg.domain);
+  // Should return array of decrypted items or null
+  sendResponse(Array.isArray(items) ? items : []);
 }
 
 function handleLock(msg, sendResponse) {
+  if (autoLockTimer) clearTimeout(autoLockTimer);
   const result = stateManager.lock();
-  sendResponse(result);
+  sendResponse({ ok: !!result.ok });
 }
 
 function handleGetLockState(msg, sendResponse) {
-  const result = stateManager.getLockState();
-  sendResponse(result);
+  const locked = stateManager.getLockState().locked;
+  sendResponse({ ok: !!locked });
 }
 
 async function handleGetVault(msg, sendResponse) {
-  const result = await stateManager.getVault();
-  sendResponse(result);
+  const vault = await stateManager.getVault();
+  if (!vault) return sendResponse([]);
+  // Only return decrypted items if unlocked
+  if (!stateManager.MEK || !stateManager.vaultCache) return sendResponse([]);
+  const items = await Promise.all(
+    vault.items.map(async (item) => {
+      try {
+        const data = await stateManager.decryptItem(item);
+        return {
+          id: item.id,
+          title: item.title,
+          domain: item.domain,
+          username: data.u,
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
+  sendResponse(items.filter(Boolean));
 }
 
 function handleGetItem(msg, sendResponse) {
-  const result = stateManager.getItem(msg.id);
-  sendResponse(result);
+  if (!stateManager.MEK || !stateManager.vaultCache)
+    return sendResponse({ ok: false });
+  const item = stateManager.getItem(msg.id);
+  if (!item) return sendResponse({ ok: false });
+  stateManager
+    .decryptItem(item)
+    .then((data) => {
+      sendResponse({
+        ok: true,
+        item: {
+          id: item.id,
+          title: item.title,
+          domain: item.domain,
+          username: data.u,
+          password: data.p,
+        },
+      });
+    })
+    .catch(() => sendResponse({ ok: false }));
 }
 
 async function handleSetItem(msg, sendResponse) {
-  const result = await stateManager.setItem(msg.id, msg.newData);
-  sendResponse(result);
+  if (!stateManager.MEK || !stateManager.vaultCache)
+    return sendResponse({ ok: false });
+  const result = await stateManager.setItem(msg.item.id, msg.item);
+  if (result.ok) resetAutoLock();
+  sendResponse({ ok: !!result.ok });
 }
 
 async function handleDeleteItem(msg, sendResponse) {
+  if (!stateManager.MEK || !stateManager.vaultCache)
+    return sendResponse({ ok: false });
   const result = await stateManager.deleteItem(msg.id);
-  sendResponse(result);
+  if (result.ok) resetAutoLock();
+  sendResponse({ ok: !!result.ok });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

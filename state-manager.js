@@ -8,6 +8,17 @@ class StateManager {
     this.vaultCache = null;
   }
 
+  // Helper to decrypt a vault item
+  async decryptItem(item) {
+    if (!this.MEK) throw new Error("Locked");
+    const data = await cryptoHelper.aesGcmDecrypt(
+      this.MEK,
+      item.iv,
+      item.ciphertext
+    );
+    return data;
+  }
+
   async setMaster(master) {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     this.MEK = await cryptoHelper.deriveKeyPBKDF2(master, salt);
@@ -43,10 +54,10 @@ class StateManager {
 
   async addLogin(item) {
     if (!this.MEK || !this.vaultCache) return { ok: false };
-    const { domain, title, u, p } = item;
+    const { domain, title, username, password } = item;
     const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(this.MEK, {
-      u,
-      p,
+      u: username,
+      p: password,
     });
     const newItem = { id: nanoId.nanoid(), title, domain, iv, ciphertext };
     this.vaultCache.items.push(newItem);
@@ -57,16 +68,27 @@ class StateManager {
   async match(domain) {
     if (!this.MEK || !this.vaultCache) return null;
     const matches = this.vaultCache.items.filter((it) => it.domain === domain);
-    if (matches.length === 1) {
-      const data = await cryptoHelper.aesGcmDecrypt(
-        this.MEK,
-        matches[0].iv,
-        matches[0].ciphertext
-      );
-      return data;
-    } else {
-      return null;
-    }
+    if (!matches.length) return [];
+    const result = await Promise.all(
+      matches.map(async (item) => {
+        try {
+          const data = await cryptoHelper.aesGcmDecrypt(
+            this.MEK,
+            item.iv,
+            item.ciphertext
+          );
+          return {
+            id: item.id,
+            title: item.title,
+            domain: item.domain,
+            username: data.u,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    return result.filter(Boolean);
   }
 
   lock() {
@@ -93,7 +115,17 @@ class StateManager {
     if (!this.vaultCache) return { ok: false };
     const idx = this.vaultCache.items.findIndex((item) => item.id === id);
     if (idx === -1) return { ok: false };
-    this.vaultCache.items[idx] = { ...this.vaultCache.items[idx], ...newData };
+    // Re-encrypt username/password if provided
+    let updated = { ...this.vaultCache.items[idx] };
+    if (newData.username !== undefined && newData.password !== undefined) {
+      const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(this.MEK, {
+        u: newData.username,
+        p: newData.password,
+      });
+      updated = { ...updated, iv, ciphertext };
+    }
+    updated = { ...updated, ...newData };
+    this.vaultCache.items[idx] = updated;
     await idbKeyval.set("vault", this.vaultCache);
     return { ok: true };
   }
