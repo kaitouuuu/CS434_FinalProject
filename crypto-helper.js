@@ -1,3 +1,5 @@
+import { get, set } from "https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm";
+
 async function deriveKeyPBKDF2(master, salt, iter = 200000) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -7,13 +9,23 @@ async function deriveKeyPBKDF2(master, salt, iter = 200000) {
     false,
     ["deriveKey"]
   );
-  return crypto.subtle.deriveKey(
+  const cryptoObj = await crypto.subtle.deriveKey(
     { name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"]
   );
+  const cryptoKey = await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true, // key is extractable
+    ["encrypt", "decrypt"]
+  );
+  const rawKey = await crypto.subtle.exportKey("raw", cryptoKey);
+  const rawKeyB64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+
+  await set("cryptoKey", rawKeyB64);
+  return cryptoObj;
 }
 
 async function hmacVerify(key, text) {
