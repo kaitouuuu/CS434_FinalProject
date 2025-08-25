@@ -11,7 +11,7 @@ async function deriveKeyPBKDF2(master, salt, iter = 200000) {
     { name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
-    false,
+    true,
     ["encrypt", "decrypt"]
   );
 }
