@@ -1,5 +1,6 @@
 import * as idbKeyval from 'idb-keyval';
 import { parse } from 'tldts';
+import './popup.css';
 
 // Helper to send messages to the background script
 async function send(msg) {
