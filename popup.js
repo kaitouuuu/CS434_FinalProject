@@ -91,30 +91,70 @@ function renderLockedUI() {
 function renderUnlockedUI() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="container">
-        <div class="header">
-            <h3>My Vault</h3>
-            <button id="lock-btn">Lock</button>
-        </div>
-        <div class="card">
-            <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
-        </div>
-        <div class="card">
-            <h4>Logins for this site</h4>
-            <div id="current-item-list"><p>Loading...</p></div>
-        </div>
-        <div class="card">
-            <h4>All Logins</h4>
-            <div id="all-item-list"><p>Loading...</p></div>
-        </div>
+  <div class="container">
+    <div id="screen-main" class="screen">
+      <div class="header">
+        <h3>My Vault</h3>
+        <button id="lock-btn">Lock</button>
+      </div>
+      <div class="card">
+        <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
+      </div>
+      <div class="card">
+        <h4>Logins for this site</h4>
+        <div id="current-item-list"><p>Loading...</p></div>
+      </div>
+      <div class="card">
+        <h4>All Logins</h4>
+        <div id="all-item-list"><p>Loading...</p></div>
+      </div>
     </div>
-  `;
+
+    <div id="screen-password" class="screen" style="display:none;">
+      <div class="header">
+        <h3>Password Generator</h3>
+      </div>
+      <div class="card">
+        <label>Length: <input type="number" id="pw-length" value="16" min="6" max="64"></label>
+        <button id="generate-btn">Generate</button>
+        <p id="generated-password"></p>
+      </div>
+    </div>
+
+    <!-- Tab navigator -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-screen="screen-main">Vault</button>
+      <button class="tab-btn" data-screen="screen-password">Generator</button>
+    </div>
+  </div>
+`;
 
   document.getElementById('lock-btn').addEventListener('click', async () => {
     const r = await send({ type: 'LOCK' });
     if (r.ok) init();
   });
 
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      // hide all screens
+      document.querySelectorAll(".screen").forEach(s => s.style.display = "none");
+      // remove active from all tabs
+      document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
+      // show selected
+      document.getElementById(btn.dataset.screen).style.display = "block";
+      btn.classList.add("active");
+    });
+  });
+
+  document.getElementById("generate-btn").addEventListener("click", () => {
+    const len = parseInt(document.getElementById("pw-length").value);
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+    let pw = "";
+    for (let i = 0; i < len; i++) {
+      pw += chars[Math.floor(Math.random() * chars.length)];
+    }
+    document.getElementById("generated-password").textContent = pw;
+  });
   document
     .getElementById('add-login-btn')
     .addEventListener('click', () => renderAddLoginUI());
@@ -209,15 +249,12 @@ function renderItemsToList(selector, items, emptyMessage) {
         <span class="item-username">${item.username}</span>
       </div>
       <div class="item-actions">
-        <button class="icon-button fill-btn" data-id="${
-          item.id
-        }" title="Fill">✏️</button>
-        <button class="icon-button view-btn" data-id="${
-          item.id
-        }" title="View/Edit">👁️</button>
-        <button class="icon-button delete-btn" data-id="${
-          item.id
-        }" title="Delete">🗑️</button>
+        <button class="icon-button fill-btn" data-id="${item.id
+      }" title="Fill">✏️</button>
+        <button class="icon-button view-btn" data-id="${item.id
+      }" title="View/Edit">👁️</button>
+        <button class="icon-button delete-btn" data-id="${item.id
+      }" title="Delete">🗑️</button>
       </div>
     `;
     list.appendChild(li);
@@ -303,17 +340,15 @@ async function renderItemDetailUI(id) {
 
             <label for="username">Username</label>
             <div class="input-group">
-                <input type="text" id="username" value="${
-                  item.username
-                }" required />
+                <input type="text" id="username" value="${item.username
+    }" required />
                 <button type="button" class="copy-btn" data-copy-target="username">Copy</button>
             </div>
 
             <label for="password">Password</label>
             <div class="input-group">
-                <input type="password" id="password" value="${
-                  item.password
-                }" required />
+                <input type="password" id="password" value="${item.password
+    }" required />
                 <button type="button" class="icon-button" id="toggle-password">👁️</button>
                 <button type="button" class="copy-btn" data-copy-target="password">Copy</button>
             </div>
