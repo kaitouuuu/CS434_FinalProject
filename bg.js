@@ -2,13 +2,11 @@ import { StateManager } from "./state-manager.js";
 const stateManager = new StateManager();
 
 let autoLockTimer = null;
-const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes
 
-function resetAutoLock() {
+async function resetAutoLock() {
+  const result = await stateManager.getTimeoutLock();
   if (autoLockTimer) clearTimeout(autoLockTimer);
-  autoLockTimer = setTimeout(() => {
-    stateManager.lock();
-  }, AUTO_LOCK_MS);
+  autoLockTimer = setTimeout(() => stateManager.lock(), result.timeout * 60 * 1000);
 }
 
 async function handleSetMaster(msg, sendResponse) {
@@ -132,6 +130,17 @@ async function handleToggleAutofillSetting(msg, sendResponse) {
   sendResponse(result);
 }
 
+async function handleGetTimeoutLock(msg, sendResponse) {
+  const result = await stateManager.getTimeoutLock();
+  sendResponse(result);
+}
+
+async function handleSetTimeoutLock(msg, sendResponse) {
+  const result = await stateManager.setTimeoutLock(msg.timeout);
+  if (result.ok) resetAutoLock();
+  sendResponse(result);
+}
+
 async function handleGetAllNote(msg, sendResponse) {
   if (!stateManager.MEK) return sendResponse([]);
   const notes = await stateManager.getAllNotes();
@@ -216,6 +225,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "TOGGLE_AUTOFILL_SETTING":
       handleToggleAutofillSetting(msg, sendResponse);
+      break;
+    case "GET_TIMEOUT_LOCK":
+      handleGetTimeoutLock(msg, sendResponse);
+      break;
+    case "SET_TIMEOUT_LOCK":
+      handleSetTimeoutLock(msg, sendResponse);
       break;
     case "GET_ALL_NOTE":
       handleGetAllNote(msg, sendResponse);

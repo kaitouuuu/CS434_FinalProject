@@ -33,6 +33,7 @@ class StateManager {
     await idbKeyval.set("vault", this.vaultCache);
     await idbKeyval.set("notes", this.notesCache);
     await idbKeyval.set("autofillSetting", true);
+    await idbKeyval.set("timeoutLock", 5);
     return { ok: true };
   }
 
@@ -280,6 +281,16 @@ class StateManager {
     const current = await idbKeyval.get("autofillSetting");
     await idbKeyval.set("autofillSetting", !current);
     return { ok: true, value: !current };
+  }
+
+  async getTimeoutLock() {
+    const timeout = await idbKeyval.get("timeoutLock");
+    return { ok: true, timeout };
+  }
+  
+  async setTimeoutLock(timeout) {
+    await idbKeyval.set("timeoutLock", timeout);
+    return { ok: true };
   }
 
   async getAllNotes() {

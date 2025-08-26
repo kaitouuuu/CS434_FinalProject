@@ -1,18 +1,14 @@
-import { parse } from 'tldts';
-
 init();
 
 function init() {
   // Start auto for your test; switch to setting-gated if you want.
-  // startManual();
+  startManual();
 
   chrome.runtime.sendMessage({ type: "GET_AUTOFILL_SETTING" }, (resp) => {
     const enabled = !!(resp && resp.ok);
     if (enabled) {
       if (!isSafeContext()) return; // only on HTTPS / localhost
       startAuto();
-    } else {
-      startManual();
     }
   });
   installSubmitCapture();
@@ -288,11 +284,6 @@ function installSubmitCapture() {
     },
     true
   );
-}
-
-function onAnySubmit(evt) {
-  console.log("content.js: form submit detected");
-  tryCheckForSaveOrUpdate(evt.target);
 }
 
 function tryCheckForSaveOrUpdate(scope) {
