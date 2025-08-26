@@ -116,8 +116,24 @@ function renderUnlockedUI() {
       </div>
       <div class="card">
         <label>Length: <input type="number" id="pw-length" value="16" min="6" max="64"></label>
-        <button id="generate-btn">Generate</button>
-        <p id="generated-password"></p>
+
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" id="include-lowercase" checked> Include lowercase letters (a-z)
+          </label>
+          <label>
+            <input type="checkbox" id="include-special" checked> Include special characters (!@#$%^&*)
+          </label>
+        </div>
+
+        <button id="generate-btn">Generate Password</button>
+
+        <div class="password-output">
+          <div class="input-group">
+            <input type="text" id="generated-password" readonly placeholder="Generated password will appear here">
+            <button type="button" class="copy-btn" id="copy-password-btn" disabled>Copy</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -156,14 +172,38 @@ function renderUnlockedUI() {
     });
   });
 
-  document.getElementById("generate-btn").addEventListener("click", () => {
-    const len = parseInt(document.getElementById("pw-length").value);
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
-    let pw = "";
-    for (let i = 0; i < len; i++) {
-      pw += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById("generate-btn").addEventListener("click", async () => {
+    const length = parseInt(document.getElementById("pw-length").value);
+    const lowercase = document.getElementById("include-lowercase").checked;
+    const special = document.getElementById("include-special").checked;
+
+    const options = { length, lowercase, special };
+    const res = await send({ type: 'GENERATE_PASSWORD', options });
+
+    if (res && res.password) {
+      const passwordInput = document.getElementById("generated-password");
+      passwordInput.value = res.password;
+      document.getElementById("copy-password-btn").disabled = false;
     }
-    document.getElementById("generated-password").textContent = pw;
+  });
+
+  document.getElementById("copy-password-btn").addEventListener("click", (e) => {
+    const passwordInput = document.getElementById("generated-password");
+    const password = passwordInput.value;
+
+    if (password) {
+      navigator.clipboard.writeText(password)
+        .then(() => {
+          e.target.textContent = 'Copied!';
+          setTimeout(() => {
+            e.target.textContent = 'Copy';
+          }, 1500);
+        })
+        .catch((err) => {
+          console.error('Failed to copy: ', err);
+          alert('Failed to copy to clipboard.');
+        });
+    }
   });
 
   document.getElementById('change-password-btn').addEventListener('click', renderChangePasswordUI);
@@ -459,7 +499,7 @@ function renderChangePasswordUI() {
       return;
     }
 
-    const res = await send({ type: 'CHANGE_PASSWORD', oldMaster, newMaster });
+    const res = await send({ type: 'CHANGE_MASTER_PASSWORD', oldMaster, newMaster });
     if (res.ok) {
       alert('Master password changed successfully!');
       renderUnlockedUI();
