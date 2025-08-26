@@ -4,18 +4,17 @@ init();
 
 function init() {
   // Start auto for your test; switch to setting-gated if you want.
-  startManual();
+  // startManual();
 
-  // If you want to gate by a setting, use this instead:
-  // chrome.runtime.sendMessage({ type: "GET_AUTOFILL_SETTING" }, (resp) => {
-  //   const enabled = !!(resp && resp.enabled);
-  //   if (enabled) {
-  //     if (!isSafeContext()) return; // only on HTTPS / localhost
-  //     startAuto();
-  //   } else {
-  //     startManual();
-  //   }
-  // });
+  chrome.runtime.sendMessage({ type: "GET_AUTOFILL_SETTING" }, (resp) => {
+    const enabled = !!(resp && resp.ok);
+    if (enabled) {
+      if (!isSafeContext()) return; // only on HTTPS / localhost
+      startAuto();
+    } else {
+      startManual();
+    }
+  });
   installSubmitCapture();
 }
 
@@ -134,6 +133,15 @@ function findPasswordField() {
   return nodes.length > 0 ? nodes[0] : null;
 }
 
+
+function findPasswordFieldIn(root) {
+  const scope = root || document;
+  const nodes = Array.from(
+    scope.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])')
+  ).filter(isVisible);
+  return nodes.length > 0 ? nodes[0] : null;
+}
+
 function findUsernameField(root) {
   const sel = [
     'input[name*=user i]',
@@ -224,63 +232,88 @@ function installSubmitCapture() {
   if (window.__submitCaptureInstalled) return;
   window.__submitCaptureInstalled = true;
 
-  // 1) Real <form> submissions (captures even if page calls preventDefault later)
+  // Capture real <form> submissions (use capture phase)
   document.addEventListener("submit", onAnySubmit, true);
 
-  // 2) Buttons that trigger custom JS logins without firing 'submit'
-  document.addEventListener("click", (e) => {
-    const btn = e.target instanceof Element ? e.target.closest('button, input[type="submit"]') : null;
-    if (!btn) return;
-    const form = btn.form || btn.closest("form");
-    if (!form) return;
-    // Let the page handle the click first, then read values in the next tick
-    queueMicrotask(() => tryCaptureFromForm(form));
-  }, true);
+  // Also catch click on submit-like buttons that may not fire 'submit'
+  document.addEventListener(
+    "click",
+    (e) => {
+      const el = e.target instanceof Element ? e.target.closest('button, input[type="submit"]') : null;
+      if (!el) return;
+      const form = el.form || el.closest("form");
+      if (!form) return;
+      // Let page handlers run first, then read values
+      queueMicrotask(() => tryCheckForSaveOrUpdate(form));
+    },
+    true
+  );
 }
 
 function onAnySubmit(evt) {
-  tryCaptureFromForm(evt.target);
+  tryCheckForSaveOrUpdate(evt.target);
 }
 
-function findPasswordFieldIn(root) {
-  const scope = root || document;
-  const nodes = Array.from(
-    scope.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])')
-  ).filter(isVisible);
-  return nodes.length > 0 ? nodes[0] : null;
-}
-
-function tryCaptureFromForm(form) {
-  // Prefer fields in the submitted form; fall back to the whole document
-  const passEl = findPasswordFieldIn(form) || findPasswordField();
+function tryCheckForSaveOrUpdate(scope) {
+  // Prefer elements inside the submitted form; fall back to whole doc
+  const passEl = findPasswordFieldIn(scope) || findPasswordField();
   if (!passEl) return;
 
-  const root = passEl.form || form || document;
+  const root = passEl.form || scope || document;
   const userEl = findUsernameField(root);
 
-  const username = userEl?.value ?? "";
-  const password = passEl.value ?? "";
+  const username = (userEl?.value ?? "").trim();
+  const password = passEl.value ?? "";           
   if (!username || !password) return;
 
   const domain = location.hostname;
 
-  // Ask background whether an update makes sense (same domain+username, different password)
+  // Ask background what action makes sense
   chrome.runtime.sendMessage(
-    { type: "LOGIN_SUBMITTED", domain, username, password },
+    { type: "CHECK_NEW_LOGIN", domain, username, password },
     (resp) => {
-      if (chrome.runtime.lastError || !resp || !resp.prompt || !resp.id) return;
+      if (chrome.runtime.lastError || !resp || !resp.msg) return;
 
-      // Simple confirm UX in-page; if you prefer, you can show a nicer overlay instead
-      const ok = confirm(`Update saved entry for ${domain}?`);
-      if (!ok) return;
-
-      // Confirm update with background
-      chrome.runtime.sendMessage({
-        type: "CONFIRM_UPDATE",
-        id: resp.id,
-        username,
-        password
-      });
+      switch (resp.msg) {
+        case "NEW": {
+          const title = domain;
+          const ok = confirm(`Save new login for ${domain}?\nUsername: ${username}`);
+          if (!ok) return;
+          chrome.runtime.sendMessage({
+            type: "ADD_LOGIN",
+            item: { username, password, title, domain }
+          }, (r) => {
+            if (chrome.runtime.lastError) return;
+            // optionally: toast/alert success/failure
+          });
+          break;
+        }
+        case "UPDATE": {
+          // Fetch existing item so we preserve its title/domain as required by SET_ITEM
+          if (!resp.id) return;
+          chrome.runtime.sendMessage({ type: "GET_ITEM", id: resp.id }, (r) => {
+            if (chrome.runtime.lastError || !r || !r.ok || !r.item) return;
+            const item = r.item;
+            const ok = confirm(`Update saved password for ${domain}?\nUsername: ${username}`);
+            if (!ok) return;
+            chrome.runtime.sendMessage({
+              type: "SET_ITEM",
+              item: {
+                id: item.id,
+                title: item.title || location.hostname,
+                domain: item.domain || location.hostname,
+                username,
+                password
+              }
+            }, () => { /* optionally: toast/alert */ });
+          });
+          break;
+        }
+        case "UNCHANGED":
+        default:
+          // Do nothing
+          break;
+      }
     }
   );
 }
