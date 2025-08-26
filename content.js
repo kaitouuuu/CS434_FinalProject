@@ -16,6 +16,7 @@ function init() {
   //     startManual();
   //   }
   // });
+  installSubmitCapture();
 }
 
 function startAuto() {
@@ -217,6 +218,71 @@ function isVisible(el) {
   const r = el.getBoundingClientRect();
   const cs = getComputedStyle(el);
   return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";
+}
+
+function installSubmitCapture() {
+  if (window.__submitCaptureInstalled) return;
+  window.__submitCaptureInstalled = true;
+
+  // 1) Real <form> submissions (captures even if page calls preventDefault later)
+  document.addEventListener("submit", onAnySubmit, true);
+
+  // 2) Buttons that trigger custom JS logins without firing 'submit'
+  document.addEventListener("click", (e) => {
+    const btn = e.target instanceof Element ? e.target.closest('button, input[type="submit"]') : null;
+    if (!btn) return;
+    const form = btn.form || btn.closest("form");
+    if (!form) return;
+    // Let the page handle the click first, then read values in the next tick
+    queueMicrotask(() => tryCaptureFromForm(form));
+  }, true);
+}
+
+function onAnySubmit(evt) {
+  tryCaptureFromForm(evt.target);
+}
+
+function findPasswordFieldIn(root) {
+  const scope = root || document;
+  const nodes = Array.from(
+    scope.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])')
+  ).filter(isVisible);
+  return nodes[0] || null;
+}
+
+function tryCaptureFromForm(form) {
+  // Prefer fields in the submitted form; fall back to the whole document
+  const passEl = findPasswordFieldIn(form) || findPasswordField();
+  if (!passEl) return;
+
+  const root = passEl.form || form || document;
+  const userEl = findUsernameField(root);
+
+  const username = userEl?.value ?? "";
+  const password = passEl.value ?? "";
+  if (!username || !password) return;
+
+  const domain = location.hostname;
+
+  // Ask background whether an update makes sense (same domain+username, different password)
+  chrome.runtime.sendMessage(
+    { type: "LOGIN_SUBMITTED", domain, username, password },
+    (resp) => {
+      if (chrome.runtime.lastError || !resp || !resp.prompt || !resp.id) return;
+
+      // Simple confirm UX in-page; if you prefer, you can show a nicer overlay instead
+      const ok = confirm(`Update saved password for ${domain}?`);
+      if (!ok) return;
+
+      // Confirm update with background
+      chrome.runtime.sendMessage({
+        type: "CONFIRM_UPDATE",
+        id: resp.id,
+        username,
+        password
+      });
+    }
+  );
 }
 
 /* ---------------------- SPA URL change detector ---------------------- */
