@@ -232,30 +232,71 @@ function installSubmitCapture() {
   if (window.__submitCaptureInstalled) return;
   window.__submitCaptureInstalled = true;
 
-  // Capture real <form> submissions (use capture phase)
-  document.addEventListener("submit", onAnySubmit, true);
+  // A tiny deduper so we don't prompt twice if both click & keydown fire
+  let lastFire = 0;
+  const arm = (cb) => {
+    const now = Date.now();
+    if (now - lastFire < 250) return; // debounce
+    lastFire = now;
+    // next tick so page handlers (and our autofill) finish
+    setTimeout(cb, 0);
+  };
 
-  // Also catch click on submit-like buttons that may not fire 'submit'
+  // 1) Real <form> submissions (rare on big SPAs like Facebook)
+  document.addEventListener(
+    "submit",
+    (evt) => {
+      console.log("content.js: form submit detected");
+      arm(() => tryCheckForSaveOrUpdate(evt.target));
+    },
+    true // capture
+  );
+
+  // 2) Clicks on things that look like submit buttons (what Facebook uses)
   document.addEventListener(
     "click",
     (e) => {
-      const el = e.target instanceof Element ? e.target.closest('button, input[type="submit"]') : null;
+      const el =
+        e.target instanceof Element
+          ? e.target.closest('button, input[type="submit"], [role="button"]')
+          : null;
       if (!el) return;
+
+      // Prefer the associated form if there is one; otherwise fall back to document
       const form = el.form || el.closest("form");
-      if (!form) return;
-      // Let page handlers run first, then read values
-      queueMicrotask(() => tryCheckForSaveOrUpdate(form));
+      console.log("content.js: submit-like click detected", { tag: el.tagName, hasForm: !!form });
+      arm(() => tryCheckForSaveOrUpdate(form || document));
+    },
+    true // capture so preventDefault/stopPropagation don't hide it
+  );
+
+  // 3) Enter-to-submit (many sites handle this without firing 'submit')
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Enter") return;
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      // Only react if Enter was pressed inside a possible login UI
+      const inForm = !!target.closest("form");
+      const hasPw = !!document.querySelector('input[type="password"]');
+      if (!inForm && !hasPw) return;
+
+      console.log("content.js: Enter key detected (login guess)");
+      arm(() => tryCheckForSaveOrUpdate(inForm ? target.closest("form") : document));
     },
     true
   );
 }
 
 function onAnySubmit(evt) {
+  console.log("content.js: form submit detected");
   tryCheckForSaveOrUpdate(evt.target);
 }
 
 function tryCheckForSaveOrUpdate(scope) {
-  // Prefer elements inside the submitted form; fall back to whole doc
+  // Prefer elements inside the passed scope; fall back to whole document
   const passEl = findPasswordFieldIn(scope) || findPasswordField();
   if (!passEl) return;
 
@@ -263,12 +304,11 @@ function tryCheckForSaveOrUpdate(scope) {
   const userEl = findUsernameField(root);
 
   const username = (userEl?.value ?? "");
-  const password = passEl.value ?? "";           
+  const password = passEl.value ?? "";
   if (!username || !password) return;
 
   const domain = location.hostname;
 
-  // Ask background what action makes sense
   chrome.runtime.sendMessage(
     { type: "CHECK_NEW_LOGIN", domain, username, password },
     (resp) => {
@@ -276,42 +316,36 @@ function tryCheckForSaveOrUpdate(scope) {
 
       switch (resp.msg) {
         case "NEW": {
-          const title = domain;
           const ok = confirm(`Save new login for ${domain}?\nUsername: ${username}`);
           if (!ok) return;
           chrome.runtime.sendMessage({
             type: "ADD_LOGIN",
-            item: { username, password, title, domain }
-          }, (r) => {
-            if (chrome.runtime.lastError) return;
-            // optionally: toast/alert success/failure
+            item: { username, password, title: domain, domain }
           });
           break;
         }
         case "UPDATE": {
-          // Fetch existing item so we preserve its title/domain as required by SET_ITEM
           if (!resp.id) return;
           chrome.runtime.sendMessage({ type: "GET_ITEM", id: resp.id }, (r) => {
-            if (chrome.runtime.lastError || !r || !r.ok || !r.item) return;
-            const item = r.item;
+            if (!r || !r.ok || !r.item) return;
             const ok = confirm(`Update saved password for ${domain}?\nUsername: ${username}`);
             if (!ok) return;
             chrome.runtime.sendMessage({
               type: "SET_ITEM",
               item: {
-                id: item.id,
-                title: item.title || location.hostname,
-                domain: item.domain || location.hostname,
+                id: r.item.id,
+                title: r.item.title || domain,
+                domain: r.item.domain || domain,
                 username,
                 password
               }
-            }, () => { /* optionally: toast/alert */ });
+            });
           });
           break;
         }
         case "UNCHANGED":
         default:
-          // Do nothing
+          // no-op
           break;
       }
     }
