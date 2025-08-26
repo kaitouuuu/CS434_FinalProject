@@ -132,6 +132,47 @@ async function handleToggleAutofillSetting(msg, sendResponse) {
   sendResponse(result);
 }
 
+async function handleGetAllNote(msg, sendResponse) {
+  if (!stateManager.MEK) return sendResponse([]);
+  const notes = await stateManager.getAllNotes();
+  sendResponse(notes);
+}
+
+async function handleGetNote(msg, sendResponse) {
+  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const result = await stateManager.getNote(msg.id);
+  sendResponse(result);
+}
+
+async function handleSetNote(msg, sendResponse) {
+  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const result = await stateManager.setNote(msg.item);
+  sendResponse(result);
+}
+
+async function handleDeleteNote(msg, sendResponse) {
+  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const result = await stateManager.deleteNote(msg.id);
+  sendResponse(result);
+}
+
+async function handleAddNote(msg, sendResponse) {
+  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const result = await stateManager.addNote(msg.item);
+  sendResponse(result);
+}
+
+async function handleCheckNewLogin(msg, sendResponse) {
+  if (!stateManager.MEK || !stateManager.vaultCache)
+    return sendResponse({ msg: "NEW" });
+  const result = await stateManager.checkNewLogin(
+    msg.domain,
+    msg.username,
+    msg.password
+  );
+  sendResponse(result);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "SET_MASTER":
@@ -175,6 +216,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "TOGGLE_AUTOFILL_SETTING":
       handleToggleAutofillSetting(msg, sendResponse);
+      break;
+    case "GET_ALL_NOTE":
+      handleGetAllNote(msg, sendResponse);
+      break;
+    case "GET_NOTE":
+      handleGetNote(msg, sendResponse);
+      break;
+    case "SET_NOTE":
+      handleSetNote(msg, sendResponse);
+      break;
+    case "DELETE_NOTE":
+      handleDeleteNote(msg, sendResponse);
+      break;
+    case "ADD_NOTE":
+      handleAddNote(msg, sendResponse);
+      break;
+    case "CHECK_NEW_LOGIN":
+      handleCheckNewLogin(msg, sendResponse);
       break;
     default:
       sendResponse(null);
