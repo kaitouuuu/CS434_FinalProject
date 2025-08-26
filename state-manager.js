@@ -69,9 +69,6 @@ class StateManager {
   async match(domain) {
     if (!this.MEK || !this.vaultCache) return null;
     const inputDomain = tldts.getDomain(domain);
-    if (!inputDomain || tldts.isPublicSuffix(inputDomain)) {
-      return { ok: false, error: "Invalid domain" };
-    }
     const matches = this.vaultCache.items.filter((it) => {
       const vaultDomain = tldts.getDomain(it.domain);
       return vaultDomain === inputDomain;
@@ -199,6 +196,29 @@ class StateManager {
     const newVerifier = await cryptoHelper.hmacVerify(newKey, "verify");
     vault.kdf.salt = btoa(String.fromCharCode(...newSalt));
     vault.verifier = btoa(String.fromCharCode(...new Uint8Array(newVerifier)));
+
+    for (let i = 0; i < vault.items.length; i++) {
+      let decrypted;
+      try {
+        decrypted = await cryptoHelper.aesGcmDecrypt(
+          key,
+          vault.items[i].iv,
+          vault.items[i].ciphertext
+        );
+      } catch {
+        return {
+          ok: false,
+          error: "Failed to decrypt item during password change",
+        };
+      }
+      const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(
+        newKey,
+        decrypted
+      );
+      vault.items[i].iv = iv;
+      vault.items[i].ciphertext = ciphertext;
+    }
+
     await idbKeyval.set("vault", vault);
     this.MEK = newKey;
     this.vaultCache = vault;
