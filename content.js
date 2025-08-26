@@ -262,7 +262,7 @@ function tryCheckForSaveOrUpdate(scope) {
   const root = passEl.form || scope || document;
   const userEl = findUsernameField(root);
 
-  const username = (userEl?.value ?? "").trim();
+  const username = (userEl?.value ?? "");
   const password = passEl.value ?? "";           
   if (!username || !password) return;
 
