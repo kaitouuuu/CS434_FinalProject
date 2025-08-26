@@ -286,7 +286,6 @@ button:hover {
   background: #007bff;
   /* blue active tab */
   color: #fff;
-  border-top: 3px solid #0056b3;
 }
 
 .checkbox-group {
