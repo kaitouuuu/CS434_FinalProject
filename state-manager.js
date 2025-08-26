@@ -339,6 +339,33 @@ class StateManager {
     this.notesCache = notes;
     return { ok: true, id: newNote.id };
   }
+
+  async checkNewLogin(domain, username, password) {
+    if (!this.MEK || !this.vaultCache) return { msg: "NEW" };
+    const inputDomain = tldts.getDomain(domain);
+    const found = this.vaultCache.items.find((item) => {
+      const vaultDomain = tldts.getDomain(item.domain);
+      return vaultDomain === inputDomain;
+    });
+    if (!found) return { msg: "NEW" };
+    let data;
+    try {
+      data = await cryptoHelper.aesGcmDecrypt(
+        this.MEK,
+        found.iv,
+        found.ciphertext
+      );
+    } catch {
+      return { msg: "NEW" };
+    }
+    if (data.u === username && data.p === password) {
+      return { msg: "UNCHANGED" };
+    } else if (data.u === username) {
+      return { msg: "UPDATE", id: found.id };
+    } else {
+      return { msg: "NEW" };
+    }
+  }
 }
 
 export { StateManager };

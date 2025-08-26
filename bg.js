@@ -162,6 +162,17 @@ async function handleAddNote(msg, sendResponse) {
   sendResponse(result);
 }
 
+async function handleCheckNewLogin(msg, sendResponse) {
+  if (!stateManager.MEK || !stateManager.vaultCache)
+    return sendResponse({ msg: "NEW" });
+  const result = await stateManager.checkNewLogin(
+    msg.domain,
+    msg.username,
+    msg.password
+  );
+  sendResponse(result);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "SET_MASTER":
@@ -220,6 +231,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "ADD_NOTE":
       handleAddNote(msg, sendResponse);
+      break;
+    case "CHECK_NEW_LOGIN":
+      handleCheckNewLogin(msg, sendResponse);
       break;
     default:
       sendResponse(null);
