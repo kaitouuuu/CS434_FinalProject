@@ -91,35 +91,169 @@ function renderLockedUI() {
 function renderUnlockedUI() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="container">
+  <div class="container">
+    <div id="screen-main" class="screen">
+      <div class="header">
+        <h3>My Vault</h3>
+        <button id="lock-btn">Lock</button>
+      </div>
+      <div class="card">
+        <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
+      </div>
+      <div class="card">
+        <h4>Logins for this site</h4>
+        <div id="current-item-list"><p>Loading...</p></div>
+      </div>
+      <div class="card">
+        <h4>All Logins</h4>
+        <div id="all-item-list"><p>Loading...</p></div>
+      </div>
+    </div>
+
+    <div id="screen-password" class="screen" style="display:none;">
+      <div class="header">
+        <h3>Password Generator</h3>
+      </div>
+      <div class="card">
+        <label>Length: <input type="number" id="pw-length" value="16" min="6" max="64"></label>
+
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" id="include-lowercase" checked> Include lowercase letters (a-z)
+          </label>
+          <label>
+            <input type="checkbox" id="include-special" checked> Include special characters (!@#$%^&*)
+          </label>
+        </div>
+
+        <button id="generate-btn">Generate Password</button>
+
+        <div class="password-output">
+          <div class="input-group">
+            <input type="text" id="generated-password" readonly placeholder="Generated password will appear here">
+            <button type="button" class="copy-btn" id="copy-password-btn" disabled>Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-settings" class="screen" style="display:none;">
         <div class="header">
-            <h3>My Vault</h3>
-            <button id="lock-btn">Lock</button>
+            <h3>Settings</h3>
         </div>
         <div class="card">
-            <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="autofill-setting"> Enable Autofill
+                </label>
+                <p class="setting-description">Automatically fill login forms when visiting websites</p>
+            </div>
         </div>
         <div class="card">
-            <h4>Logins for this site</h4>
-            <div id="current-item-list"><p>Loading...</p></div>
-        </div>
-        <div class="card">
-            <h4>All Logins</h4>
-            <div id="all-item-list"><p>Loading...</p></div>
+            <button id="change-password-btn" class="settings-button">Change Master Password</button>
         </div>
     </div>
-  `;
+
+    <!-- Tab navigator -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-screen="screen-main">Vault</button>
+      <button class="tab-btn" data-screen="screen-password">Generator</button>
+      <button class="tab-btn" data-screen="screen-settings">Settings</button>
+    </div>
+  </div>
+`;
 
   document.getElementById('lock-btn').addEventListener('click', async () => {
     const r = await send({ type: 'LOCK' });
     if (r.ok) init();
   });
 
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      // hide all screens
+      document
+        .querySelectorAll('.screen')
+        .forEach((s) => (s.style.display = 'none'));
+      // remove active from all tabs
+      document
+        .querySelectorAll('.tab-btn')
+        .forEach((t) => t.classList.remove('active'));
+      // show selected
+      document.getElementById(btn.dataset.screen).style.display = 'block';
+      btn.classList.add('active');
+
+      if (btn.dataset.screen === 'screen-settings') {
+        await loadAutofillSetting();
+      }
+    });
+  });
+
+  document
+    .getElementById('generate-btn')
+    .addEventListener('click', async () => {
+      const length = parseInt(document.getElementById('pw-length').value);
+      const lowercase = document.getElementById('include-lowercase').checked;
+      const special = document.getElementById('include-special').checked;
+
+      const options = { length, lowercase, special };
+      const res = await send({ type: 'GENERATE_PASSWORD', options });
+
+      if (res && res.password) {
+        const passwordInput = document.getElementById('generated-password');
+        passwordInput.value = res.password;
+        document.getElementById('copy-password-btn').disabled = false;
+      }
+    });
+
+  document
+    .getElementById('copy-password-btn')
+    .addEventListener('click', (e) => {
+      const passwordInput = document.getElementById('generated-password');
+      const password = passwordInput.value;
+
+      if (password) {
+        navigator.clipboard
+          .writeText(password)
+          .then(() => {
+            e.target.textContent = 'Copied!';
+            setTimeout(() => {
+              e.target.textContent = 'Copy';
+            }, 1500);
+          })
+          .catch((err) => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy to clipboard.');
+          });
+      }
+    });
+
+  document
+    .getElementById('change-password-btn')
+    .addEventListener('click', renderChangePasswordUI);
   document
     .getElementById('add-login-btn')
     .addEventListener('click', () => renderAddLoginUI());
 
+  // Add autofill setting toggle listener
+  document
+    .getElementById('autofill-setting')
+    .addEventListener('change', async (e) => {
+      const res = await send({ type: 'TOGGLE_AUTOFILL_SETTING' });
+      if (!res || !res.ok) {
+        e.target.checked = !e.target.checked;
+        alert('Failed to update autofill setting.');
+      }
+    });
+
   displayVaultItems();
+}
+
+// Load autofill setting from background script
+async function loadAutofillSetting() {
+  const res = await send({ type: 'GET_AUTOFILL_SETTING' });
+  if (res && res.ok) {
+    document.getElementById('autofill-setting').checked = res.ok;
+  }
 }
 
 // Renders the Add Login form UI (full screen)
@@ -371,6 +505,58 @@ async function renderItemDetailUI(id) {
         alert('Item updated successfully!');
         renderUnlockedUI();
       } else alert('Failed to update item.');
+    });
+}
+
+function renderChangePasswordUI() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="container full-screen">
+        <div class="header">
+            <button id="back-btn" class="back-button">← Back</button>
+            <h3>Change Master Password</h3>
+        </div>
+        <form id="change-password-form" class="change-password-form">
+            <label for="current-password">Current Password</label>
+            <input type="password" id="current-password" required />
+
+            <label for="new-password">New Password</label>
+            <input type="password" id="new-password" required />
+
+            <label for="confirm-password">Confirm New Password</label>
+            <input type="password" id="confirm-password" required />
+
+            <button type="submit" class="save-button">Save Changes</button>
+        </form>
+    </div>
+  `;
+
+  document
+    .getElementById('back-btn')
+    .addEventListener('click', () => renderUnlockedUI());
+
+  document
+    .getElementById('change-password-form')
+    .addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const oldMaster = document.getElementById('current-password').value;
+      const newMaster = document.getElementById('new-password').value;
+      const confirmMaster = document.getElementById('confirm-password').value;
+
+      if (newMaster !== confirmMaster) {
+        alert('New passwords do not match.');
+        return;
+      }
+
+      const res = await send({
+        type: 'CHANGE_MASTER_PASSWORD',
+        oldMaster,
+        newMaster
+      });
+      if (res.ok) {
+        alert('Master password changed successfully!');
+        renderUnlockedUI();
+      } else alert(res.error);
     });
 }
 

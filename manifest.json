@@ -1,12 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Mini Local Password Manager",
+  "name": "Aegis Vault",
   "version": "1.0.0",
-  "description": "Local-only password manager (AES-GCM, PBKDF2).",
+  "description": "Aegis Vault transforms your browser into an impenetrable digital fortress. Powered by a quantum-resistant cryptographic core featuring military-grade AES-256-GCM and a robust PBKDF2-SHA-256 key derivation function, your credentials are shielded with unyielding, local-only security.",
   "permissions": ["storage", "scripting", "activeTab"],
   "host_permissions": ["https://*/*"],
   "background": { "service_worker": "dist/bg.bundle.js" },
   "action": { "default_popup": "popup.html" },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "content_scripts": [{
     "matches": ["https://*/*"],
     "js": ["dist/content.bundle.js"],
