@@ -29,6 +29,7 @@ class StateManager {
       items: [],
     };
     await idbKeyval.set("vault", this.vaultCache);
+    await idbKeyval.set("autofillSetting", true);
     return { ok: true };
   }
 
@@ -208,6 +209,12 @@ class StateManager {
   async getAutofillSetting() {
     const setting = await idbKeyval.get("autofillSetting");
     return { ok: !!setting };
+  }
+
+  async toggleAutofillSetting() {
+    const current = await idbKeyval.get("autofillSetting");
+    await idbKeyval.set("autofillSetting", !current);
+    return { ok: true, value: !current };
   }
 }
 

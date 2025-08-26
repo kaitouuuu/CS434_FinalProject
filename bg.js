@@ -127,6 +127,11 @@ async function handleGetAutofillSetting(msg, sendResponse) {
   sendResponse(result);
 }
 
+async function handleToggleAutofillSetting(msg, sendResponse) {
+  const result = await stateManager.toggleAutofillSetting();
+  sendResponse(result);
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "SET_MASTER":
@@ -167,6 +172,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "GET_AUTOFILL_SETTING":
       handleGetAutofillSetting(msg, sendResponse);
+      break;
+    case "TOGGLE_AUTOFILL_SETTING":
+      handleToggleAutofillSetting(msg, sendResponse);
       break;
     default:
       sendResponse(null);
