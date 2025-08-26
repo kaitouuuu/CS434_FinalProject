@@ -17,6 +17,19 @@ async function send(msg) {
   });
 }
 
+let lockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
+setInterval(async () => {
+  const newLockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
+  if (!lockState && newLockState) renderLockedUI();
+  lockState = newLockState;
+}, 1000);
+
+function queryTabs(queryInfo) {
+  return new Promise((resolve) =>
+    chrome.tabs.query(queryInfo, (tabs) => resolve(tabs))
+  );
+}
+
 // Main initialization function
 async function init() {
   const app = document.getElementById('app');
@@ -152,6 +165,10 @@ function renderUnlockedUI() {
         <div class="card">
             <button id="change-password-btn" class="settings-button">Change Master Password</button>
         </div>
+        <div class="card">
+          <label for="timeout-lock">Auto-Lock Timeout (minutes):</label>
+          <input type="number" id="timeout-lock" min="1" value="5">
+        </div>
     </div>
 
     <!-- Tab navigator -->
@@ -184,6 +201,7 @@ function renderUnlockedUI() {
 
       if (btn.dataset.screen === 'screen-settings') {
         await loadAutofillSetting();
+        await loadTimeoutLockSetting();
       }
     });
   });
@@ -216,9 +234,7 @@ function renderUnlockedUI() {
           .writeText(password)
           .then(() => {
             e.target.textContent = 'Copied!';
-            setTimeout(() => {
-              e.target.textContent = 'Copy';
-            }, 1500);
+            setTimeout(() => (e.target.textContent = 'Copy'), 1500);
           })
           .catch((err) => {
             console.error('Failed to copy: ', err);
@@ -245,15 +261,33 @@ function renderUnlockedUI() {
       }
     });
 
+  document
+    .getElementById('timeout-lock')
+    .addEventListener('change', async (e) => {
+      const res = await send({
+        type: 'SET_TIMEOUT_LOCK',
+        timeout: e.target.value
+      });
+      if (!res || !res.ok) {
+        e.target.value = 5;
+        alert('Failed to update timeout lock setting.');
+      }
+    });
+
   displayVaultItems();
 }
 
 // Load autofill setting from background script
 async function loadAutofillSetting() {
   const res = await send({ type: 'GET_AUTOFILL_SETTING' });
-  if (res && res.ok) {
+  if (res && res.ok)
     document.getElementById('autofill-setting').checked = res.ok;
-  }
+}
+
+async function loadTimeoutLockSetting() {
+  const res = await send({ type: 'GET_TIMEOUT_LOCK' });
+  if (res && res.ok)
+    document.getElementById('timeout-lock').value = res.timeout || 5;
 }
 
 // Renders the Add Login form UI (full screen)
@@ -261,7 +295,7 @@ async function renderAddLoginUI() {
   const app = document.getElementById('app');
 
   // Get current tab domain for default value
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await queryTabs({ active: true, currentWindow: true });
   const currentHostname = tab ? parse(tab.url).hostname : '';
 
   app.innerHTML = `
@@ -304,7 +338,7 @@ async function renderAddLoginUI() {
 }
 
 async function displayVaultItems() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await queryTabs({ active: true, currentWindow: true });
   const currentHostname = tab ? parse(tab.url).hostname : '';
 
   const vaultRes = await send({ type: 'GET_VAULT' });
@@ -397,7 +431,7 @@ async function handleFillItem(id) {
 
   const { username, password } = res.item;
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await queryTabs({ active: true, currentWindow: true });
   if (tab && tab.id) {
     chrome.tabs.sendMessage(tab.id, {
       type: 'REQUEST_FILL',
@@ -476,9 +510,7 @@ async function renderItemDetailUI(id) {
         .writeText(textToCopy)
         .then(() => {
           e.target.textContent = 'Copied!';
-          setTimeout(() => {
-            e.target.textContent = 'Copy';
-          }, 1500);
+          setTimeout(() => (e.target.textContent = 'Copy'), 1500);
         })
         .catch((err) => {
           console.error('Failed to copy: ', err);
