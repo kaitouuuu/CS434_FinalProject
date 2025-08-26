@@ -247,7 +247,7 @@ function findPasswordFieldIn(root) {
   const nodes = Array.from(
     scope.querySelectorAll('input[type="password"]:not([disabled]):not([readonly])')
   ).filter(isVisible);
-  return nodes[0] || null;
+  return nodes.length > 0 ? nodes[0] : null;
 }
 
 function tryCaptureFromForm(form) {
@@ -271,7 +271,7 @@ function tryCaptureFromForm(form) {
       if (chrome.runtime.lastError || !resp || !resp.prompt || !resp.id) return;
 
       // Simple confirm UX in-page; if you prefer, you can show a nicer overlay instead
-      const ok = confirm(`Update saved password for ${domain}?`);
+      const ok = confirm(`Update saved entry for ${domain}?`);
       if (!ok) return;
 
       // Confirm update with background
