@@ -1,6 +1,7 @@
 import * as idbKeyval from "idb-keyval";
 import * as nanoId from "nanoid";
 import cryptoHelper from "./crypto-helper.js";
+import * as tldts from "tldts";
 
 class StateManager {
   constructor() {
@@ -8,7 +9,6 @@ class StateManager {
     this.vaultCache = null;
   }
 
-  // Helper to decrypt a vault item
   async decryptItem(item) {
     if (!this.MEK) throw new Error("Locked");
     const data = await cryptoHelper.aesGcmDecrypt(
@@ -29,6 +29,7 @@ class StateManager {
       items: [],
     };
     await idbKeyval.set("vault", this.vaultCache);
+    await idbKeyval.set("autofillSetting", true);
     return { ok: true };
   }
 
@@ -67,7 +68,14 @@ class StateManager {
 
   async match(domain) {
     if (!this.MEK || !this.vaultCache) return null;
-    const matches = this.vaultCache.items.filter((it) => it.domain === domain);
+    const inputDomain = tldts.getDomain(domain);
+    if (!inputDomain || tldts.isPublicSuffix(inputDomain)) {
+      return { ok: false, error: "Invalid domain" };
+    }
+    const matches = this.vaultCache.items.filter((it) => {
+      const vaultDomain = tldts.getDomain(it.domain);
+      return vaultDomain === inputDomain;
+    });
     if (!matches.length) return [];
     const result = await Promise.all(
       matches.map(async (item) => {
@@ -115,7 +123,6 @@ class StateManager {
     if (!this.vaultCache) return { ok: false };
     const idx = this.vaultCache.items.findIndex((item) => item.id === id);
     if (idx === -1) return { ok: false };
-    // Re-encrypt username/password if provided
     let updated = { ...this.vaultCache.items[idx] };
     if (newData.username !== undefined && newData.password !== undefined) {
       const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(this.MEK, {
@@ -137,6 +144,77 @@ class StateManager {
     this.vaultCache.items = newItems;
     await idbKeyval.set("vault", this.vaultCache);
     return { ok: true };
+  }
+
+  generatePassword({ length = 12, lowercase = false, special = false } = {}) {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const digits = "0123456789";
+    const specials = "!@#$%^&*()-_=+[]{}|;:,.<>?";
+    let chars = upper + digits;
+    let required = [];
+    if (lowercase) {
+      chars += lower;
+      required.push(lower[Math.floor(Math.random() * lower.length)]);
+    }
+    if (special) {
+      chars += specials;
+      required.push(specials[Math.floor(Math.random() * specials.length)]);
+    }
+
+    let passwordArr = [];
+    for (let i = 0; i < length - required.length; i++) {
+      const idx = Math.floor(Math.random() * chars.length);
+      passwordArr.push(chars[idx]);
+    }
+
+    passwordArr = passwordArr.concat(required);
+    for (let i = passwordArr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [passwordArr[i], passwordArr[j]] = [passwordArr[j], passwordArr[i]];
+    }
+    return passwordArr.join("");
+  }
+
+  async changeMasterPassword(oldMaster, newMaster) {
+    const vault = await idbKeyval.get("vault");
+    if (!vault) return { ok: false, error: "No vault" };
+    const salt = Uint8Array.from(atob(vault.kdf.salt), (c) => c.charCodeAt(0));
+    const key = await cryptoHelper.deriveKeyPBKDF2(
+      oldMaster,
+      salt,
+      vault.kdf.iter
+    );
+    const v2 = await cryptoHelper.hmacVerify(key, "verify");
+    const v2_b64 = btoa(String.fromCharCode(...new Uint8Array(v2)));
+    if (v2_b64 !== vault.verifier)
+      return { ok: false, error: "Old master incorrect" };
+
+    const newSalt = crypto.getRandomValues(new Uint8Array(16));
+    const newKey = await cryptoHelper.deriveKeyPBKDF2(
+      newMaster,
+      newSalt,
+      vault.kdf.iter
+    );
+    const newVerifier = await cryptoHelper.hmacVerify(newKey, "verify");
+    vault.kdf.salt = btoa(String.fromCharCode(...newSalt));
+    vault.verifier = btoa(String.fromCharCode(...new Uint8Array(newVerifier)));
+    await idbKeyval.set("vault", vault);
+    this.MEK = newKey;
+    this.vaultCache = vault;
+
+    return { ok: true };
+  }
+
+  async getAutofillSetting() {
+    const setting = await idbKeyval.get("autofillSetting");
+    return { ok: !!setting };
+  }
+
+  async toggleAutofillSetting() {
+    const current = await idbKeyval.get("autofillSetting");
+    await idbKeyval.set("autofillSetting", !current);
+    return { ok: true, value: !current };
   }
 }
 
