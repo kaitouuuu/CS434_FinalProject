@@ -191,6 +191,22 @@ class StateManager {
     if (v2_b64 !== vault.verifier)
       return { ok: false, error: "Old master incorrect" };
 
+    const newKeyTest = await cryptoHelper.deriveKeyPBKDF2(
+      newMaster,
+      salt,
+      vault.kdf.iter
+    );
+    const newVerifierTest = await cryptoHelper.hmacVerify(newKeyTest, "verify");
+    const newVerifierTest_b64 = btoa(
+      String.fromCharCode(...new Uint8Array(newVerifierTest))
+    );
+    if (newVerifierTest_b64 === vault.verifier) {
+      return {
+        ok: false,
+        error: "New master must be different from old master",
+      };
+    }
+
     const newSalt = crypto.getRandomValues(new Uint8Array(16));
     const newKey = await cryptoHelper.deriveKeyPBKDF2(
       newMaster,
