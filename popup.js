@@ -399,9 +399,9 @@ function renderItemsToList(selector, items, emptyMessage) {
     let title = '';
     if (item.title) title = item.title;
     else title = item.domain;
-    if (title.length > 15) title = title.substring(0, 15) + '...';
+    if (title.length > 10) title = title.substring(0, 10) + '...';
     let username = item.username;
-    if (username.length > 15) username = username.substring(0, 15) + '...';
+    if (username.length > 10) username = username.substring(0, 10) + '...';
     const li = document.createElement('li');
     li.className = 'item-entry';
     li.innerHTML = `
