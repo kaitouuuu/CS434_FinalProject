@@ -355,3 +355,18 @@ button:hover {
 .screen {
   padding-bottom: 40px;
 }
+
+.btn-wrapper {
+  text-align: center;
+}
+
+#timeout-lock-label-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#timeout-lock {
+  width: 60px;
+  font-size: 14px;
+}

@@ -139,11 +139,13 @@ function renderUnlockedUI() {
           </label>
         </div>
 
-        <button id="generate-btn">Generate Password</button>
+        <div class="btn-wrapper">
+          <button id="generate-btn">Generate Password</button>
+        </div>
 
         <div class="password-output">
           <div class="input-group">
-            <input type="text" id="generated-password" readonly placeholder="Generated password will appear here">
+            <input type="text" id="generated-password" readonly placeholder="Ex: abc123, Qw3rt!">
             <button type="button" class="copy-btn" id="copy-password-btn" disabled>Copy</button>
           </div>
         </div>
@@ -165,7 +167,7 @@ function renderUnlockedUI() {
         <div class="card">
             <button id="change-password-btn" class="settings-button">Change Master Password</button>
         </div>
-        <div class="card">
+        <div class="card" id="timeout-lock-label-wrapper">
           <label for="timeout-lock">Auto-Lock Timeout (minutes):</label>
           <input type="number" id="timeout-lock" min="1" value="5">
         </div>
