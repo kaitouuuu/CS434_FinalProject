@@ -118,7 +118,7 @@ async function handleDeleteItem(msg, sendResponse) {
 }
 
 function handleGeneratePassword(msg, sendResponse) {
-  // msg.options: { length, lowercase, special }
+  // msg.options: { length, uppercase, lowercase, digits, special, avoidSimilar, requireEachSelected }
   const password = stateManager.generatePassword(msg.options || {});
   sendResponse({ password });
 }

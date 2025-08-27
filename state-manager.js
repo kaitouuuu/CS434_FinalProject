@@ -164,34 +164,25 @@ class StateManager {
     return { ok: true };
   }
 
-  generatePassword({ length = 12, lowercase = false, special = false } = {}) {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const digits = '0123456789';
-    const specials = '!@#$%^&*()-_=+[]{}|;:,.<>?';
-    let chars = upper + digits;
-    let required = [];
-    if (lowercase) {
-      chars += lower;
-      required.push(lower[Math.floor(Math.random() * lower.length)]);
-    }
-    if (special) {
-      chars += specials;
-      required.push(specials[Math.floor(Math.random() * specials.length)]);
-    }
-
-    let passwordArr = [];
-    for (let i = 0; i < length - required.length; i++) {
-      const idx = Math.floor(Math.random() * chars.length);
-      passwordArr.push(chars[idx]);
-    }
-
-    passwordArr = passwordArr.concat(required);
-    for (let i = passwordArr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [passwordArr[i], passwordArr[j]] = [passwordArr[j], passwordArr[i]];
-    }
-    return passwordArr.join('');
+  generatePassword({
+    length = 12,
+    uppercase = true,
+    lowercase = true,
+    digits = false,
+    special = false,
+    avoidSimilar = true,
+    requireEachSelected = true
+  } = {}) {
+    const { generatePassword } = require('./password-generator.js');
+    return generatePassword({
+      length,
+      uppercase,
+      lowercase,
+      digits,
+      special,
+      avoidSimilar,
+      requireEachSelected
+    });
   }
 
   async changeMasterPassword(oldMaster, newMaster) {

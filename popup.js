@@ -128,14 +128,26 @@ function renderUnlockedUI() {
         <h3>Password Generator</h3>
       </div>
       <div class="card">
-        <label>Length: <input type="number" id="pw-length" value="16" min="6" max="64"></label>
+        <label>Length: <input type="number" id="pw-length" value="16" min="6" max="200000"></label>
 
         <div class="checkbox-group">
           <label>
             <input type="checkbox" id="include-lowercase" checked> Include lowercase letters (a-z)
           </label>
           <label>
+            <input type="checkbox" id="include-uppercase" checked> Include uppercase letters (A-Z)
+          </label>
+          <label>
             <input type="checkbox" id="include-special" checked> Include special characters (!@#$%^&*)
+          </label>
+          <label>
+            <input type="checkbox" id="include-digits" checked> Include digits (0-9)
+          </label>
+          <label>
+            <input type="checkbox" id="include-similar" checked> Avoid similar characters (i.e. O0oIl1|&#96;\'"~;:.,{}[]()<>\/)
+          </label>
+          <label>
+            <input type="checkbox" id="include-require" checked> Require each selected character type
           </label>
         </div>
 
@@ -214,8 +226,21 @@ function renderUnlockedUI() {
       const length = parseInt(document.getElementById('pw-length').value);
       const lowercase = document.getElementById('include-lowercase').checked;
       const special = document.getElementById('include-special').checked;
+      const uppercase = document.getElementById('include-uppercase').checked;
+      const digits = document.getElementById('include-digits').checked;
+      const avoidSimilar = document.getElementById('include-similar').checked;
+      const requireEachSelected =
+        document.getElementById('include-require').checked;
 
-      const options = { length, lowercase, special };
+      const options = {
+        length,
+        lowercase,
+        special,
+        uppercase,
+        digits,
+        avoidSimilar,
+        requireEachSelected
+      };
       const res = await send({ type: 'GENERATE_PASSWORD', options });
 
       if (res && res.password) {
