@@ -107,12 +107,14 @@ function renderUnlockedUI() {
     <div id="screen-main" class="screen">
       <div class="header">
         <h3>My Vault</h3>
-  <button id="lock-btn">
-    <i class="fa-solid fa-lock"></i>
-  </button>
-      </div>
-      <div class="card">
-        <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
+        <div class="btn-group">
+        <button id="add-login-btn">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+        <button id="lock-btn">
+          <i class="fa-solid fa-lock"></i>
+        </button>
+        </div>
       </div>
       <div class="card">
         <h4>Logins for this site</h4>
