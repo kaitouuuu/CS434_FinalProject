@@ -8,6 +8,7 @@ body {
 
 .container {
   padding: 16px;
+  overflow-y: auto;
 }
 
 h3 {
@@ -98,7 +99,7 @@ button:hover {
 #current-item-list,
 #all-item-list {
   max-height: 150px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .item-list-ul {
@@ -225,7 +226,7 @@ button:hover {
 .settings-button {
   width: 100%;
   background-color: #555;
-  text-align: left;
+  text-align: center;
   padding: 12px 16px;
 }
 
@@ -372,10 +373,11 @@ button:hover {
 }
 
 .fill-btn {
-  background-color: #007bff;
-  color: white;
+  background-color: transparent;
+  color: #555;
   border: none;
   padding: 6px;
+  border: 1px solid #0056b3;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -385,5 +387,6 @@ button:hover {
 
 .fill-btn:hover {
   background-color: #0056b3;
+  color: white;
   border-radius: 6px !important;
 }
