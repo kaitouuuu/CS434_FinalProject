@@ -73,7 +73,6 @@ button:hover {
 }
 
 #lock-btn {
-
   padding: 8px 12px;
   font-size: 14px;
 }
@@ -418,4 +417,21 @@ button:hover {
   /* icons will always be black */
   font-size: 18px;
   /* size of the icon */
+}
+
+#content {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 4px;
+  min-height: 2em;
+  max-width: 200px;
+  outline: none;
+  white-space: pre-wrap;
+  background-color: white;
+}
+
+#content:empty:before {
+  content: attr(data-placeholder);
+  color: #aaa;
+  pointer-events: none;
 }

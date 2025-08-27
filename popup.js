@@ -373,7 +373,7 @@ async function renderAddNoteUI() {
         </div>
         <form id="add-login-form" class="add-login-form">
             <input type="text" id="title" placeholder="Title (e.g., My birthday)" />
-            <input type="text" id="content" placeholder="1/1/1970" required />
+            <div id="content" contenteditable="true" data-placeholder="1/1/1970"></div>
             <button type="submit" class="save-button">Save Note</button>
         </form>
     </div>
@@ -613,7 +613,7 @@ async function renderNoteDetailUI(id) {
 
             <label for="content">Content</label>
             <div class="input-group">
-                <input type="text" id="content" value="${item.content}" required />
+                <div id="content" contenteditable="true">${item.content}</div>
                 <button type="button" class="copy-btn" data-copy-target="content">Copy</button>
             </div>
 
