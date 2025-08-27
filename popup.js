@@ -407,7 +407,7 @@ function renderItemsToList(selector, items, emptyMessage) {
     li.innerHTML = `
       <div class="item-info">
         <span class="item-title">${title}</span>
-        <span class="item-username">${item.username}</span>
+        <span class="item-username">${username}</span>
       </div>
       <div class="item-actions">
         <button class="icon-button fill-btn" data-id="${item.id}" title="Fill">Fill</button>
