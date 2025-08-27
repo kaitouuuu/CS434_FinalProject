@@ -614,7 +614,7 @@ async function renderNoteDetailUI(id) {
             <label for="content">Content</label>
             <div class="input-group">
                 <div id="content" contenteditable="true">${item.content}</div>
-                <button type="button" class="copy-btn" data-copy-target="content">Copy</button>
+                <button type="button" class="copy-btn copy-btn-right" data-copy-target="content">Copy</button>
             </div>
 
             <button type="submit" class="save-button">Save Changes</button>

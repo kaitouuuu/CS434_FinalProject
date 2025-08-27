@@ -424,14 +424,18 @@ button:hover {
   border-radius: 6px;
   padding: 4px;
   min-height: 2em;
-  max-width: 200px;
   outline: none;
   white-space: pre-wrap;
   background-color: white;
+  flex: 1;
 }
 
 #content:empty:before {
   content: attr(data-placeholder);
   color: #aaa;
   pointer-events: none;
+}
+
+.copy-btn-right {
+  margin-left: auto;
 }
