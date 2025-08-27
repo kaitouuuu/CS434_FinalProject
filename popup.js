@@ -126,6 +126,21 @@ function renderUnlockedUI() {
       </div>
     </div>
 
+    <div id="screen-note" class="screen" style="display:none;">
+      <div class="header">
+        <h3>My Note</h3>
+        <div class="btn-group">
+          <button id="add-note-btn">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <h4>All Notes</h4>
+        <div id="all-note-list"><p>Loading...</p></div>
+      </div>
+    </div>
+
     <div id="screen-password" class="screen" style="display:none;">
       <div class="header">
         <h3>Password Generator</h3>
@@ -191,6 +206,7 @@ function renderUnlockedUI() {
     <!-- Tab navigator -->
     <div class="tab-bar">
       <button class="tab-btn active" data-screen="screen-main">Vault</button>
+      <button class="tab-btn" data-screen="screen-note">Notes</button>
       <button class="tab-btn" data-screen="screen-password">Generator</button>
       <button class="tab-btn" data-screen="screen-settings">Settings</button>
     </div>
@@ -225,33 +241,7 @@ function renderUnlockedUI() {
 
   document
     .getElementById('generate-btn')
-    .addEventListener('click', async () => {
-      const length = parseInt(document.getElementById('pw-length').value);
-      const lowercase = document.getElementById('include-lowercase').checked;
-      const special = document.getElementById('include-special').checked;
-      const uppercase = document.getElementById('include-uppercase').checked;
-      const digits = document.getElementById('include-digits').checked;
-      const avoidSimilar = document.getElementById('include-similar').checked;
-      const requireEachSelected =
-        document.getElementById('include-require').checked;
-
-      const options = {
-        length,
-        lowercase,
-        special,
-        uppercase,
-        digits,
-        avoidSimilar,
-        requireEachSelected
-      };
-      const res = await send({ type: 'GENERATE_PASSWORD', options });
-
-      if (res && res.password) {
-        const passwordInput = document.getElementById('generated-password');
-        passwordInput.value = res.password;
-        document.getElementById('copy-password-btn').disabled = false;
-      }
-    });
+    .addEventListener('click', async () => handleGeneratePassword());
 
   document
     .getElementById('copy-password-btn')
@@ -278,7 +268,11 @@ function renderUnlockedUI() {
     .addEventListener('click', renderChangePasswordUI);
   document
     .getElementById('add-login-btn')
-    .addEventListener('click', () => renderAddLoginUI());
+    .addEventListener('click', renderAddLoginUI);
+
+  document
+    .getElementById('add-note-btn')
+    .addEventListener('click', renderAddNoteUI);
 
   // Add autofill setting toggle listener
   document
@@ -305,6 +299,7 @@ function renderUnlockedUI() {
     });
 
   displayVaultItems();
+  displayNoteItems();
 }
 
 // Load autofill setting from background script
@@ -367,6 +362,72 @@ async function renderAddLoginUI() {
     });
 }
 
+async function renderAddNoteUI() {
+  const app = document.getElementById('app');
+
+  app.innerHTML = `
+    <div class="container">
+        <div class="header">
+            <button id="back-btn" class="back-button">← Back</button>
+            <h3>Add New Note</h3>
+        </div>
+        <form id="add-login-form" class="add-login-form">
+            <input type="text" id="title" placeholder="Title (e.g., My birthday)" />
+            <input type="text" id="content" placeholder="1/1/1970" required />
+            <button type="submit" class="save-button">Save Note</button>
+        </form>
+    </div>
+  `;
+
+  document
+    .getElementById('back-btn')
+    .addEventListener('click', () => renderNoteUI());
+
+  document
+    .getElementById('add-login-form')
+    .addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const item = {
+        title: form.title.value,
+        content: form.content.value
+      };
+      const res = await send({ type: 'ADD_NOTE', item });
+      if (res && res.ok) {
+        alert('Note added successfully!');
+        renderNoteUI(); // Go back to main screen
+      } else alert('Failed to add note.');
+    });
+}
+
+async function handleGeneratePassword() {
+  const length = parseInt(document.getElementById('pw-length').value);
+  const lowercase = document.getElementById('include-lowercase').checked;
+  const special = document.getElementById('include-special').checked;
+  const uppercase = document.getElementById('include-uppercase').checked;
+  const digits = document.getElementById('include-digits').checked;
+  const avoidSimilar = document.getElementById('include-similar').checked;
+  const requireEachSelected =
+    document.getElementById('include-require').checked;
+
+  const options = {
+    length,
+    lowercase,
+    special,
+    uppercase,
+    digits,
+    avoidSimilar,
+    requireEachSelected
+  };
+  const res = await send({ type: 'GENERATE_PASSWORD', options });
+
+  if (res && res.password) {
+    const passwordInput = document.getElementById('generated-password');
+    passwordInput.value = res.password;
+    document.getElementById('copy-password-btn').disabled = false;
+  }
+}
+
 async function displayVaultItems() {
   const [tab] = await queryTabs({ active: true, currentWindow: true });
   const currentHostname = tab ? parse(tab.url).hostname : '';
@@ -383,6 +444,47 @@ async function displayVaultItems() {
     'No logins for this site.'
   );
   renderItemsToList('#all-item-list', allItems, 'Your vault is empty.');
+}
+
+async function displayNoteItems() {
+  const notesRes = await send({ type: 'GET_ALL_NOTE' });
+  const noteItems = notesRes ? notesRes : [];
+  const container = document.querySelector('#all-note-list');
+  if (!container) return;
+  if (noteItems.length === 0) {
+    container.innerHTML = `<p class="empty-state">No notes</p>`;
+    return;
+  }
+  container.innerHTML = '';
+  const list = document.createElement('ul');
+  list.className = 'item-list-ul';
+  noteItems.forEach((item) => {
+    let title = item.title;
+    if (title.length > 15) title = title.substring(0, 15) + '...';
+    const li = document.createElement('li');
+    li.className = 'item-entry';
+    li.innerHTML = `
+      <div class="item-info">
+        <span class="item-title">${title}</span>
+      </div>
+      <div class="item-actions">
+        <button class="icon-button view-btnx" data-id="${item.id}" title="View/Edit">👁️</button>
+        <button class="icon-button delete-btnx" data-id="${item.id}" title="Delete">🗑️</button>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+
+  container.appendChild(list);
+  container.replaceWith(container.cloneNode(true));
+  document.querySelector('#all-note-list').addEventListener('click', (e) => {
+    const target = e.target.closest('.icon-button');
+    if (!target) return;
+
+    const id = target.dataset.id;
+    if (target.classList.contains('view-btnx')) renderNoteDetailUI(id);
+    else if (target.classList.contains('delete-btnx')) handleDeleteNote(id);
+  });
 }
 
 function renderItemsToList(selector, items, emptyMessage) {
@@ -452,6 +554,15 @@ async function handleDeleteItem(id) {
   else alert('Failed to delete item.');
 }
 
+async function handleDeleteNote(id) {
+  console.log('click');
+  if (!confirm('Are you sure you want to delete this note?')) return;
+
+  const res = await send({ type: 'DELETE_NOTE', id });
+  if (res && res.ok) displayNoteItems(); // Refresh the list
+  else alert('Failed to delete note.');
+}
+
 async function handleFillItem(id) {
   const res = await send({ type: 'GET_ITEM', id });
   if (!res || !res.ok) {
@@ -472,6 +583,84 @@ async function handleFillItem(id) {
     if (r && !r.ok) alert("There's no active form to fill.");
     window.close();
   } else alert('Could not find an active tab to fill.');
+}
+
+async function renderNoteDetailUI(id) {
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="container"><p>Loading item...</p></div>`;
+
+  const res = await send({ type: 'GET_NOTE', id });
+  if (!res || !res.ok) {
+    alert('Could not load item details.');
+    renderNoteUI(); // Go back
+    return;
+  }
+
+  const item = res.item;
+
+  app.innerHTML = `
+    <div class="container full-screen">
+        <div class="header">
+            <button id="back-btn" class="back-button">← Back</button>
+            <h3>Edit Note</h3>
+        </div>
+        <form id="edit-item-form" class="edit-item-form">
+            <label for="title">Title</label>
+            <div class="input-group">
+                <input type="text" id="title" value="${item.title}" required />
+                <button type="button" class="copy-btn" data-copy-target="title">Copy</button>
+            </div>
+
+            <label for="content">Content</label>
+            <div class="input-group">
+                <input type="text" id="content" value="${item.content}" required />
+                <button type="button" class="copy-btn" data-copy-target="content">Copy</button>
+            </div>
+
+            <button type="submit" class="save-button">Save Changes</button>
+        </form>
+    </div>
+  `;
+
+  document
+    .getElementById('back-btn')
+    .addEventListener('click', () => renderNoteUI());
+
+  // Handle copy buttons
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const targetId = e.target.dataset.copyTarget;
+      const textToCopy = document.getElementById(targetId).value;
+      navigator.clipboard
+        .writeText(textToCopy)
+        .then(() => {
+          e.target.textContent = 'Copied!';
+          setTimeout(() => (e.target.textContent = 'Copy'), 1500);
+        })
+        .catch((err) => {
+          console.error('Failed to copy: ', err);
+          alert('Failed to copy to clipboard.');
+        });
+    });
+  });
+
+  document
+    .getElementById('edit-item-form')
+    .addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const updatedItem = {
+        id: item.id,
+        title: form.title.value,
+        content: form.content.value
+      };
+
+      const setRes = await send({ type: 'SET_NOTE', item: updatedItem });
+      if (setRes && setRes.ok) {
+        alert('Note updated successfully!');
+        renderNoteUI();
+      } else alert('Failed to update Note.');
+    });
 }
 
 async function renderItemDetailUI(id) {
@@ -502,15 +691,17 @@ async function renderItemDetailUI(id) {
 
             <label for="username">Username</label>
             <div class="input-group">
-                <input type="text" id="username" value="${item.username
-    }" required />
+                <input type="text" id="username" value="${
+                  item.username
+                }" required />
                 <button type="button" class="copy-btn" data-copy-target="username">Copy</button>
             </div>
 
             <label for="password">Password</label>
             <div class="input-group">
-                <input type="password" id="password" value="${item.password
-    }" required />
+                <input type="password" id="password" value="${
+                  item.password
+                }" required />
                 <button type="button" class="icon-button" id="toggle-password">👁️</button>
                 <button type="button" class="copy-btn" data-copy-target="password">Copy</button>
             </div>
@@ -619,6 +810,11 @@ function renderChangePasswordUI() {
         renderUnlockedUI();
       } else alert(res.error);
     });
+}
+
+async function renderNoteUI() {
+  renderUnlockedUI();
+  document.querySelector('.tab-btn[data-screen="screen-note"]').click();
 }
 
 // Start the app
