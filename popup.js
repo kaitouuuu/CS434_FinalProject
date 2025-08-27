@@ -396,23 +396,23 @@ function renderItemsToList(selector, items, emptyMessage) {
   list.className = 'item-list-ul';
 
   items.forEach((item) => {
+    let title = '';
+    if (item.title) title = item.title;
+    else title = item.domain;
+    if (title.length > 15) title = title.substring(0, 15) + '...';
+    let username = item.username;
+    if (username.length > 15) username = username.substring(0, 15) + '...';
     const li = document.createElement('li');
     li.className = 'item-entry';
     li.innerHTML = `
       <div class="item-info">
-        <span class="item-title">${item.title || item.domain}</span>
+        <span class="item-title">${title}</span>
         <span class="item-username">${item.username}</span>
       </div>
       <div class="item-actions">
-        <button class="icon-button fill-btn" data-id="${
-          item.id
-        }" title="Fill">Fill</button>
-        <button class="icon-button view-btn" data-id="${
-          item.id
-        }" title="View/Edit">👁️</button>
-        <button class="icon-button delete-btn" data-id="${
-          item.id
-        }" title="Delete">🗑️</button>
+        <button class="icon-button fill-btn" data-id="${item.id}" title="Fill">Fill</button>
+        <button class="icon-button view-btn" data-id="${item.id}" title="View/Edit">👁️</button>
+        <button class="icon-button delete-btn" data-id="${item.id}" title="Delete">🗑️</button>
       </div>
     `;
     list.appendChild(li);

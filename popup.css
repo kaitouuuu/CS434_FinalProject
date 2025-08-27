@@ -98,7 +98,6 @@ button:hover {
 
 #current-item-list,
 #all-item-list {
-  max-height: 150px;
   overflow: visible;
 }
 
