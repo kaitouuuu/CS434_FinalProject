@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "background": {
     "service_worker": "dist/bg.bundle.js"

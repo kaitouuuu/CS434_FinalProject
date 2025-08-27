@@ -1,13 +1,24 @@
 import { StateManager } from "./state-manager.js";
+import { getMEK } from "./mek-store.js";
 const stateManager = new StateManager();
-
-let autoLockTimer = null;
 
 async function resetAutoLock() {
   const result = await stateManager.getTimeoutLock();
-  if (autoLockTimer) clearTimeout(autoLockTimer);
-  autoLockTimer = setTimeout(() => stateManager.lock(), result.timeout * 60 * 1000);
+  const minutes = parseInt(result.timeout) || 5;
+
+  await chrome.alarms.clear('autoLock');
+
+  chrome.alarms.create('autoLock', {
+    delayInMinutes: minutes
+  });
 }
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'autoLock') {
+    await stateManager.lock();
+  }
+});
+
 
 async function handleSetMaster(msg, sendResponse) {
   const result = await stateManager.setMaster(msg.master);
@@ -33,14 +44,14 @@ async function handleMatch(msg, sendResponse) {
   sendResponse(Array.isArray(items) ? items : []);
 }
 
-function handleLock(msg, sendResponse) {
-  if (autoLockTimer) clearTimeout(autoLockTimer);
-  const result = stateManager.lock();
+async function handleLock(msg, sendResponse) {
+  await chrome.alarms.clear("autoLock");
+  const result = await stateManager.lock();
   sendResponse({ ok: !!result.ok });
 }
 
-function handleGetLockState(msg, sendResponse) {
-  const locked = stateManager.getLockState().locked;
+async function handleGetLockState(msg, sendResponse) {
+  const locked = (await stateManager.getLockState()).locked;
   sendResponse({ ok: !!locked });
 }
 
@@ -48,7 +59,8 @@ async function handleGetVault(msg, sendResponse) {
   const vault = await stateManager.getVault();
   if (!vault) return sendResponse([]);
   // Only return decrypted items if unlocked
-  if (!stateManager.MEK || !stateManager.vaultCache) return sendResponse([]);
+  const MEK = await getMEK();
+  if (!MEK || !stateManager.vaultCache) return sendResponse([]);
   const items = await Promise.all(
     vault.items.map(async (item) => {
       try {
@@ -67,9 +79,9 @@ async function handleGetVault(msg, sendResponse) {
   sendResponse(items.filter(Boolean));
 }
 
-function handleGetItem(msg, sendResponse) {
-  if (!stateManager.MEK || !stateManager.vaultCache)
-    return sendResponse({ ok: false });
+async function handleGetItem(msg, sendResponse) {
+  const MEK = await getMEK();
+  if (!MEK || !stateManager.vaultCache) return sendResponse({ ok: false });
   const item = stateManager.getItem(msg.id);
   if (!item) return sendResponse({ ok: false });
   stateManager
@@ -90,16 +102,16 @@ function handleGetItem(msg, sendResponse) {
 }
 
 async function handleSetItem(msg, sendResponse) {
-  if (!stateManager.MEK || !stateManager.vaultCache)
-    return sendResponse({ ok: false });
+  const MEK = await getMEK();
+  if (!MEK || !stateManager.vaultCache) return sendResponse({ ok: false });
   const result = await stateManager.setItem(msg.item.id, msg.item);
   if (result.ok) resetAutoLock();
   sendResponse({ ok: !!result.ok });
 }
 
 async function handleDeleteItem(msg, sendResponse) {
-  if (!stateManager.MEK || !stateManager.vaultCache)
-    return sendResponse({ ok: false });
+  const MEK = await getMEK();
+  if (!MEK || !stateManager.vaultCache) return sendResponse({ ok: false });
   const result = await stateManager.deleteItem(msg.id);
   if (result.ok) resetAutoLock();
   sendResponse({ ok: !!result.ok });
@@ -142,38 +154,43 @@ async function handleSetTimeoutLock(msg, sendResponse) {
 }
 
 async function handleGetAllNote(msg, sendResponse) {
-  if (!stateManager.MEK) return sendResponse([]);
+  const MEK = await getMEK();
+  if (!MEK) return sendResponse([]);
   const notes = await stateManager.getAllNotes();
   sendResponse(notes);
 }
 
 async function handleGetNote(msg, sendResponse) {
-  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const MEK = await getMEK();
+  if (!MEK) return sendResponse({ ok: false });
   const result = await stateManager.getNote(msg.id);
   sendResponse(result);
 }
 
 async function handleSetNote(msg, sendResponse) {
-  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const MEK = await getMEK();
+  if (!MEK) return sendResponse({ ok: false });
   const result = await stateManager.setNote(msg.item);
   sendResponse(result);
 }
 
 async function handleDeleteNote(msg, sendResponse) {
-  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const MEK = await getMEK();
+  if (!MEK) return sendResponse({ ok: false });
   const result = await stateManager.deleteNote(msg.id);
   sendResponse(result);
 }
 
 async function handleAddNote(msg, sendResponse) {
-  if (!stateManager.MEK) return sendResponse({ ok: false });
+  const MEK = await getMEK();
+  if (!MEK) return sendResponse({ ok: false });
   const result = await stateManager.addNote(msg.item);
   sendResponse(result);
 }
 
 async function handleCheckNewLogin(msg, sendResponse) {
-  if (!stateManager.MEK || !stateManager.vaultCache)
-    return sendResponse({ msg: "NEW" });
+  const MEK = await getMEK();
+  if (!MEK || !stateManager.vaultCache) return sendResponse({ msg: "NEW" });
   const result = await stateManager.checkNewLogin(
     msg.domain,
     msg.username,
