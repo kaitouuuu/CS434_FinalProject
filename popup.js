@@ -390,7 +390,7 @@ async function renderAddNoteUI() {
       const form = e.target;
       const item = {
         title: form.title.value,
-        content: form.content.value
+        content: form.querySelector('#content').innerHTML
       };
       const res = await send({ type: 'ADD_NOTE', item });
       if (res && res.ok) {
@@ -652,7 +652,7 @@ async function renderNoteDetailUI(id) {
       const updatedItem = {
         id: item.id,
         title: form.title.value,
-        content: form.content.value
+        content: form.querySelector('#content').innerHTML
       };
 
       const setRes = await send({ type: 'SET_NOTE', item: updatedItem });
