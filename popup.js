@@ -1,7 +1,6 @@
 import * as idbKeyval from 'idb-keyval';
 import { parse } from 'tldts';
 import './popup.css';
-
 // Helper to send messages to the background script
 async function send(msg) {
   return new Promise((resolve) => {
@@ -108,7 +107,9 @@ function renderUnlockedUI() {
     <div id="screen-main" class="screen">
       <div class="header">
         <h3>My Vault</h3>
-        <button id="lock-btn">Lock</button>
+  <button id="lock-btn">
+    <i class="fa-solid fa-lock"></i>
+  </button>
       </div>
       <div class="card">
         <button id="add-login-btn" class="add-login-button">+ Add New Login</button>
@@ -499,17 +500,15 @@ async function renderItemDetailUI(id) {
 
             <label for="username">Username</label>
             <div class="input-group">
-                <input type="text" id="username" value="${
-                  item.username
-                }" required />
+                <input type="text" id="username" value="${item.username
+    }" required />
                 <button type="button" class="copy-btn" data-copy-target="username">Copy</button>
             </div>
 
             <label for="password">Password</label>
             <div class="input-group">
-                <input type="password" id="password" value="${
-                  item.password
-                }" required />
+                <input type="password" id="password" value="${item.password
+    }" required />
                 <button type="button" class="icon-button" id="toggle-password">👁️</button>
                 <button type="button" class="copy-btn" data-copy-target="password">Copy</button>
             </div>
