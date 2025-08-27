@@ -381,7 +381,7 @@ function renderItemsToList(selector, items, emptyMessage) {
       <div class="item-actions">
         <button class="icon-button fill-btn" data-id="${
           item.id
-        }" title="Fill">✏️</button>
+        }" title="Fill">Fill</button>
         <button class="icon-button view-btn" data-id="${
           item.id
         }" title="View/Edit">👁️</button>
@@ -435,12 +435,13 @@ async function handleFillItem(id) {
 
   const [tab] = await queryTabs({ active: true, currentWindow: true });
   if (tab && tab.id) {
-    chrome.tabs.sendMessage(tab.id, {
+    const r = chrome.tabs.sendMessage(tab.id, {
       type: 'REQUEST_FILL',
       username,
       password
     });
 
+    if (r && !r.ok) alert("There's no active form to fill.");
     window.close();
   } else alert('Could not find an active tab to fill.');
 }

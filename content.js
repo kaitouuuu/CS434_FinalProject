@@ -22,13 +22,14 @@ function startAuto() {
 
 function startManual() {
   console.log("content.js: manual mode ready");
-  chrome.runtime.onMessage.addListener((msg) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!msg || msg.type !== "REQUEST_FILL") return;
     console.log("content.js: REQUEST_FILL received");
 
     // If popup provided explicit creds, use them directly.
     if (msg.username && msg.password) {
-      fillWithObserver({ u: msg.username, p: msg.password });
+      const isOK = fillWithObserver({ u: msg.username, p: msg.password });
+      sendResponse({ ok: isOK });
       return;
     }
 
