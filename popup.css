@@ -353,6 +353,7 @@ button:hover {
 
 .screen {
   padding-bottom: 40px;
+  height: 400px;
 }
 
 .btn-wrapper {
@@ -438,4 +439,117 @@ button:hover {
 
 .copy-btn-right {
   margin-left: auto;
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+}
+
+.menu-item {
+  position: relative;
+  /* parent for absolute dropdown */
+  border-radius: 10px;
+}
+
+.menu-item button {
+  background: none;
+  border: 5px solid transparent;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.dropdown {
+  list-style: none;
+  border-radius: 10px;
+  margin: 0;
+  padding: 0;
+  background: #ecedef;
+  position: absolute;
+  top: 100%;
+  /* appear below button */
+  left: 0;
+  display: none;
+  z-index: 999;
+}
+
+.dropdown li button {
+  display: block;
+  width: 100%;
+  padding: 5px 15px;
+  color: #010816;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown li button:hover {
+  background: #0056b3;
+  color: white;
+}
+
+.select-menu {
+  position: relative;
+}
+
+.select-menu .select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.select-menu i {
+  font-size: 25px;
+  transition: 0.2s;
+}
+
+.select-menu.active .select-btn i {
+  transform: rotate(-180deg);
+}
+
+.select-menu .options {
+  display: none;
+  margin: 0;
+  /* remove gap */
+  padding: 0;
+  list-style: none;
+  position: absolute;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.select-menu.active .options {
+  display: block
+}
+
+.options .option {
+  display: flex;
+  align-items: center;
+  height: 55px;
+  cursor: pointer;
+  padding: 0 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.options .option:hover {
+  background: #f0f0f0;
+}
+
+.option i {
+  font-size: 25px;
+  margin-right: 12px;
+}
+
+.option .option-text {
+  font-weight: 500;
+  color: #333;
 }

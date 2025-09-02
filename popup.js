@@ -108,35 +108,45 @@ function renderUnlockedUI() {
       <div class="header">
         <h3>My Vault</h3>
         <div class="btn-group">
-        <button id="add-login-btn">
-          <i class="fa-solid fa-plus"></i>
-        </button>
-        <button id="lock-btn">
-          <i class="fa-solid fa-lock"></i>
-        </button>
+          <div class="menu-item">
+            <button id="add-btn">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+            <ul id="dropdown" class="dropdown">
+              <li><button id ="add-login-btn">Password</button></li>
+              <li><button id ="note-btn">Note</button></li>
+            </ul>
+            <button id="lock-btn">
+              <i class="fa-solid fa-lock"></i>
+            </button>
+          </div>
         </div>
       </div>
+
       <div class="card">
         <h4>Logins for this site</h4>
         <div id="current-item-list"><p>Loading...</p></div>
       </div>
-      <div class="card">
-        <h4>All Logins</h4>
-        <div id="all-item-list"><p>Loading...</p></div>
-      </div>
-    </div>
-
-    <div id="screen-note" class="screen" style="display:none;">
-      <div class="header">
-        <h3>My Note</h3>
-        <div class="btn-group">
-          <button id="add-note-btn">
-            <i class="fa-solid fa-plus"></i>
-          </button>
+      <div class="select-menu">
+        <div  class = "select-btn">
+          <span class = "sBtn-text" > All </span>
+          <i class = "bx bx-chevron-down"></i>
         </div>
+
+        <ul class="options">
+          <li  class = "option">
+            <i class ="bi bi-lock" style="color: black; font-size: 10px;"></i>
+            <span class ="option-text">Password</span>
+          </li>
+        
+          <li  class  = "option">
+            <i class ="fa-regular fa-note-sticky" style="color: black; font-size: 10px;"></i>
+            <span class ="option-text">Note</span>
+          </li>
+        </ul>
       </div>
-      <div class="card">
-        <h4>All Notes</h4>
+      <div id="DOMContentLoaded" class="card">
+        <div id="all-item-list"><p>Loading...</p></div>
         <div id="all-note-list"><p>Loading...</p></div>
       </div>
     </div>
@@ -206,12 +216,42 @@ function renderUnlockedUI() {
     <!-- Tab navigator -->
     <div class="tab-bar">
       <button class="tab-btn active" data-screen="screen-main">Vault</button>
-      <button class="tab-btn" data-screen="screen-note">Notes</button>
       <button class="tab-btn" data-screen="screen-password">Generator</button>
       <button class="tab-btn" data-screen="screen-settings">Settings</button>
     </div>
   </div>
 `;
+
+  const optionMenu = document.querySelector(".select-menu"),
+    selectBtn = optionMenu.querySelector(".select-btn"),
+    options = optionMenu.querySelectorAll(".options .option"), // FIXED
+    sBtn_text = optionMenu.querySelector(".sBtn-text");
+
+  selectBtn.addEventListener("click", () =>
+    optionMenu.classList.toggle("active")
+  );
+
+  options.forEach(option => {
+    option.addEventListener("click", () => {
+      let selectedOption = option.querySelector(".option-text").innerText;
+      sBtn_text.innerText = selectedOption;
+      optionMenu.classList.remove("active");
+
+      // re-render based on selection
+      renderBySelection(selectedOption);
+    });
+  });
+  const addBtn = document.getElementById("add-btn");
+  const dropdown = document.getElementById("dropdown");
+
+  addBtn.addEventListener("click", () => {
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+  });
+  document.getElementById("note-btn").addEventListener("click", () =>
+    renderAddNoteUI()
+  );
+
+  document.getElementById("add-login-btn").addEventListener("click", () => renderAddLoginUI());
 
   document.getElementById('lock-btn').addEventListener('click', async () => {
     const r = await send({ type: 'LOCK' });
@@ -238,7 +278,9 @@ function renderUnlockedUI() {
       }
     });
   });
-
+  document.addEventListener("DOMContentLoaded", () => {
+    renderBySelection('All');
+  });
   document
     .getElementById('generate-btn')
     .addEventListener('click', async () => handleGeneratePassword());
@@ -270,9 +312,6 @@ function renderUnlockedUI() {
     .getElementById('add-login-btn')
     .addEventListener('click', renderAddLoginUI);
 
-  document
-    .getElementById('add-note-btn')
-    .addEventListener('click', renderAddNoteUI);
 
   // Add autofill setting toggle listener
   document
@@ -301,7 +340,23 @@ function renderUnlockedUI() {
   displayVaultItems();
   displayNoteItems();
 }
+async function renderBySelection(selection) {
+  const vaultContainer = document.querySelector('#all-item-list');
+  const noteContainer = document.querySelector('#all-note-list');
 
+  // Clear before re-render
+  vaultContainer.innerHTML = '';
+  noteContainer.innerHTML = '';
+
+  if (selection === 'All') {
+    await displayVaultItems();
+    await displayNoteItems();
+  } else if (selection === 'Password') {
+    await displayVaultItems();
+  } else if (selection === 'Note') {
+    await displayNoteItems();
+  }
+}
 // Load autofill setting from background script
 async function loadAutofillSetting() {
   const res = await send({ type: 'GET_AUTOFILL_SETTING' });
@@ -315,7 +370,6 @@ async function loadTimeoutLockSetting() {
     document.getElementById('timeout-lock').value = res.timeout || 5;
 }
 
-// Renders the Add Login form UI (full screen)
 async function renderAddLoginUI() {
   const app = document.getElementById('app');
 
@@ -381,7 +435,7 @@ async function renderAddNoteUI() {
 
   document
     .getElementById('back-btn')
-    .addEventListener('click', () => renderNoteUI());
+    .addEventListener('click', () => renderUnlockedUI());
 
   document
     .getElementById('add-login-form')
@@ -691,17 +745,15 @@ async function renderItemDetailUI(id) {
 
             <label for="username">Username</label>
             <div class="input-group">
-                <input type="text" id="username" value="${
-                  item.username
-                }" required />
+                <input type="text" id="username" value="${item.username
+    }" required />
                 <button type="button" class="copy-btn" data-copy-target="username">Copy</button>
             </div>
 
             <label for="password">Password</label>
             <div class="input-group">
-                <input type="password" id="password" value="${
-                  item.password
-                }" required />
+                <input type="password" id="password" value="${item.password
+    }" required />
                 <button type="button" class="icon-button" id="toggle-password">👁️</button>
                 <button type="button" class="copy-btn" data-copy-target="password">Copy</button>
             </div>
@@ -812,10 +864,6 @@ function renderChangePasswordUI() {
     });
 }
 
-async function renderNoteUI() {
-  renderUnlockedUI();
-  document.querySelector('.tab-btn[data-screen="screen-note"]').click();
-}
 
 // Start the app
 init();
