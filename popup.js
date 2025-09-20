@@ -135,6 +135,10 @@ function renderUnlockedUI() {
 
         <ul class="options">
           <li  class = "option">
+            <i class ="fa-solid fa-check" style="color: black; font-size: 10px;"></i>
+            <span class ="option-text">All</span>
+          </li>
+          <li  class = "option">
             <i class ="bi bi-lock" style="color: black; font-size: 10px;"></i>
             <span class ="option-text">Password</span>
           </li>
@@ -540,7 +544,9 @@ async function displayNoteItems() {
     else if (target.classList.contains('delete-btnx')) handleDeleteNote(id);
   });
 }
-
+function getFaviconUrl(domain) {
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+}
 function renderItemsToList(selector, items, emptyMessage) {
   const container = document.querySelector(selector);
   if (!container) return;
@@ -556,6 +562,7 @@ function renderItemsToList(selector, items, emptyMessage) {
 
   items.forEach((item) => {
     let title = '';
+    const faviconUrl = getFaviconUrl(item.domain);
     if (item.title) title = item.title;
     else title = item.domain;
     if (title.length > 10) title = title.substring(0, 10) + '...';
@@ -564,9 +571,13 @@ function renderItemsToList(selector, items, emptyMessage) {
     const li = document.createElement('li');
     li.className = 'item-entry';
     li.innerHTML = `
-      <div class="item-info">
-        <span class="item-title">${title}</span>
-        <span class="item-username">${username}</span>
+      <div class="item-main">
+        <img src="${faviconUrl}" class="favicon" alt=""
+             onerror="this.src='default-lock.svg'">
+        <div class="item-info">
+          <span class="item-title">${title}</span>
+          <span class="item-username">${username}</span>
+        </div>
       </div>
       <div class="item-actions">
         <button class="icon-button fill-btn" data-id="${item.id}" title="Fill">Fill</button>
