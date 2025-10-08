@@ -2,9 +2,9 @@ const path = require('path');
 
 module.exports = {
   entry: {
-    popup: './popup.js',
+    popup: './popup-src/popup.js',
     content: './content.js',
-    bg: './bg.js',
+    bg: './bg-src/bg.js',
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
