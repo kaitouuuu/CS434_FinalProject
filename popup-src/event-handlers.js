@@ -3,8 +3,8 @@ import { renderBySelection } from './vault-manager.js';
 import {
   renderAddNoteUI,
   renderAddLoginUI,
-  renderChangePasswordUI
 } from './ui-renderer.js';
+import { renderChangePasswordUI } from './settings.js';
 import { handleGeneratePassword } from './password-generator.js';
 import {
   loadAutofillSetting,

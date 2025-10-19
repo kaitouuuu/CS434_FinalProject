@@ -4,32 +4,109 @@ import { parse } from 'tldts';
 function renderFirstRunUI() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="container">
+    <div class="container" style="max-width:400px; margin:auto; font-family:sans-serif;">
       <h3>Welcome!</h3>
       <p>Create a Master Password to secure your vault.</p>
       <form id="setup-form">
-        <input type="password" id="m1" placeholder="Master Password" required />
-        <input type="password" id="m2" placeholder="Confirm Password" required />
-        <button type="submit">Create Vault</button>
+        <input type="password" id="m1" placeholder="Master Password" required style="width:100%; padding:8px; margin:5px 0;" />
+        <div id="checklist" style="font-size:0.9em; margin-bottom:10px;">
+          <div id="len" style="color:red;">❌ At least 8 characters</div>
+          <div id="upper" style="color:red;">❌ Has uppercase letter</div>
+          <div id="special" style="color:red;">❌ Has special character</div>
+        </div>
+        <input type="password" id="m2" placeholder="Confirm Password" required style="width:100%; padding:8px; margin:5px 0;" />
+        <div id="match" style="font-size:0.9em; color:red; height:18px;"></div>
+        <button type="submit" style="width:100%; padding:10px; margin-top:10px;">Create Vault</button>
       </form>
     </div>
   `;
 
-  document
-    .getElementById('setup-form')
-    .addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const m1 = document.getElementById('m1').value;
-      const m2 = document.getElementById('m2').value;
-      if (m1 !== m2) {
-        alert('Passwords do not match!');
-        return;
-      }
-      const res = await send({ type: 'SET_MASTER', master: m1 });
-      if (res.ok) window.init();
-      else alert('Error creating vault.');
-    });
+  const m1 = document.getElementById('m1');
+  const m2 = document.getElementById('m2');
+  const len = document.getElementById('len');
+  const upper = document.getElementById('upper');
+  const special = document.getElementById('special');
+  const match = document.getElementById('match');
+
+  function updateChecklist() {
+    const val = m1.value;
+
+    // Length check
+    if (val.length >= 8) {
+      len.style.color = 'green';
+      len.textContent = '✔ At least 8 characters';
+    } else {
+      len.style.color = 'red';
+      len.textContent = '❌ At least 8 characters';
+    }
+
+    // Uppercase check
+    if (/[A-Z]/.test(val)) {
+      upper.style.color = 'green';
+      upper.textContent = '✔ Has uppercase letter';
+    } else {
+      upper.style.color = 'red';
+      upper.textContent = '❌ Has uppercase letter';
+    }
+
+    // Special character check
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(val)) {
+      special.style.color = 'green';
+      special.textContent = '✔ Has special character';
+    } else {
+      special.style.color = 'red';
+      special.textContent = '❌ Has special character';
+    }
+
+    updateMatch();
+  }
+
+  function updateMatch() {
+    if (m2.value === '') {
+      match.textContent = '';
+      return;
+    }
+    if (m1.value === m2.value) {
+      match.style.color = 'green';
+      match.textContent = '✔ Passwords match';
+    } else {
+      match.style.color = 'red';
+      match.textContent = '❌ Passwords do not match';
+    }
+  }
+
+  m1.addEventListener('input', updateChecklist);
+  m2.addEventListener('input', updateMatch);
+
+  document.getElementById('setup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const val = m1.value;
+    const confirm = m2.value;
+
+    const valid =
+      val.length >= 8 &&
+      /[A-Z]/.test(val) &&
+      /[!@#$%^&*(),.?":{}|<>]/.test(val);
+
+    if (!valid) {
+      alert('Password does not meet all requirements.');
+      return;
+    }
+
+    if (val !== confirm) {
+      alert('Passwords do not match!');
+      return;
+    }
+
+    console.log('Creating vault with provided master password');
+    const res = await send({ type: 'SET_MASTER', master: val });
+    if (res.ok) window.init();
+    else alert('Error creating vault.');
+  });
 }
+
+
 
 function renderLockedUI() {
   const app = document.getElementById('app');
@@ -137,62 +214,9 @@ async function renderAddNoteUI() {
     });
 }
 
-function renderChangePasswordUI() {
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="container full-screen">
-        <div class="header">
-            <button id="back-btn" class="back-button">← Back</button>
-            <h3>Change Master Password</h3>
-        </div>
-        <form id="change-password-form" class="change-password-form">
-            <label for="current-password">Current Password</label>
-            <input type="password" id="current-password" required />
-
-            <label for="new-password">New Password</label>
-            <input type="password" id="new-password" required />
-
-            <label for="confirm-password">Confirm New Password</label>
-            <input type="password" id="confirm-password" required />
-
-            <button type="submit" class="save-button">Save Changes</button>
-        </form>
-    </div>
-  `;
-
-  document
-    .getElementById('back-btn')
-    .addEventListener('click', () => window.renderUnlockedUI());
-
-  document
-    .getElementById('change-password-form')
-    .addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const oldMaster = document.getElementById('current-password').value;
-      const newMaster = document.getElementById('new-password').value;
-      const confirmMaster = document.getElementById('confirm-password').value;
-
-      if (newMaster !== confirmMaster) {
-        alert('New passwords do not match.');
-        return;
-      }
-
-      const res = await send({
-        type: 'CHANGE_MASTER_PASSWORD',
-        oldMaster,
-        newMaster
-      });
-      if (res.ok) {
-        alert('Master password changed successfully!');
-        window.renderUnlockedUI();
-      } else alert(res.error);
-    });
-}
-
 export {
   renderFirstRunUI,
   renderLockedUI,
   renderAddLoginUI,
   renderAddNoteUI,
-  renderChangePasswordUI
 };
