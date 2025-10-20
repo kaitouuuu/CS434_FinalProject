@@ -70,20 +70,9 @@ function handleItemActions(container) {
 }
 
 async function displayVaultItems() {
-  const [tab] = await queryTabs({ active: true, currentWindow: true });
-  const currentHostname = tab ? parse(tab.url).hostname : '';
-
   const vaultRes = await send({ type: 'GET_VAULT' });
   const allItems = vaultRes ? vaultRes : [];
 
-  const matchRes = await send({ type: 'MATCH', domain: currentHostname });
-  const matchingItems = matchRes ? matchRes : [];
-
-  renderItemsToList(
-    '#current-item-list',
-    matchingItems,
-    'No logins for this site.'
-  );
   renderItemsToList('#all-item-list', allItems, 'Your vault is empty.');
 }
 
@@ -135,14 +124,114 @@ async function renderBySelection(selection) {
   vaultContainer.innerHTML = '';
   noteContainer.innerHTML = '';
 
+  const [tab] = await queryTabs({ active: true, currentWindow: true });
+  const currentHostname = tab ? parse(tab.url).hostname : '';
+  const matchRes = await send({ type: 'MATCH', domain: currentHostname });
+  const matchingItems = matchRes ? matchRes : [];
+
+  renderItemsToList(
+    '#current-item-list',
+    matchingItems,
+    'No logins for this site.'
+  );
   if (selection === 'All') {
-    await displayVaultItems();
-    await displayNoteItems();
+    await displayAllItems();
   } else if (selection === 'Password') {
     await displayVaultItems();
   } else if (selection === 'Note') {
     await displayNoteItems();
   }
+}
+async function displayAllItems() {
+  const container = document.querySelector('#all-item-list');
+  if (!container) return;
+
+  // Fetch vault items and notes
+  const vaultRes = await send({ type: 'GET_VAULT' });
+  const allVaultItems = vaultRes ? vaultRes : [];
+
+  const notesRes = await send({ type: 'GET_ALL_NOTE' });
+  const noteItems = notesRes ? notesRes : [];
+
+  // Combine all vault items and notes
+  const combinedItems = [
+    ...allVaultItems.map(item => ({ ...item, kind: 'vault' })),
+    ...noteItems.map(item => ({ ...item, kind: 'note' }))
+  ];
+
+  // Sort by time (descending)
+  combinedItems.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+  // Handle empty state
+  if (combinedItems.length === 0) {
+    container.innerHTML = `<p class="empty-state">Your vault is empty.</p>`;
+    return;
+  }
+
+  // Build list
+  container.innerHTML = '';
+  const list = document.createElement('ul');
+  list.className = 'item-list-ul';
+
+  combinedItems.forEach((item) => {
+    const li = document.createElement('li');
+    li.className = 'item-entry';
+
+    if (item.kind === 'vault') {
+      // vault item
+      let title = item.title || item.domain;
+      if (title.length > 10) title = title.substring(0, 10) + '...';
+      let username = item.username;
+      if (username.length > 10) username = username.substring(0, 10) + '...';
+      const faviconUrl = getFaviconUrl(item.domain);
+      li.innerHTML = `
+        <div class="item-main">
+          <img src="${faviconUrl}" class="favicon" alt=""
+               onerror="this.src='default-lock.svg'">
+          <div class="item-info">
+            <span class="item-title">${title}</span>
+            <span class="item-username">${username}</span>
+          </div>
+        </div>
+        <div class="item-actions">
+          <button class="icon-button fill-btn" data-id="${item.id}" title="Fill">Fill</button>
+          <button class="icon-button view-btn" data-id="${item.id}" title="View/Edit">👁️</button>
+          <button class="icon-button delete-btn" data-id="${item.id}" title="Delete">🗑️</button>
+        </div>
+      `;
+    } else {
+      // note item
+      let title = item.title;
+      if (title.length > 15) title = title.substring(0, 15) + '...';
+      li.innerHTML = `
+        <div class="item-info">
+          <span class="item-title">${title}</span>
+        </div>
+        <div class="item-actions">
+          <button class="icon-button view-btnx" data-id="${item.id}" title="View/Edit">👁️</button>
+          <button class="icon-button delete-btnx" data-id="${item.id}" title="Delete">🗑️</button>
+        </div>
+      `;
+    }
+
+    list.appendChild(li);
+  });
+
+  container.appendChild(list);
+
+  // Refresh and bind click handlers
+  container.replaceWith(container.cloneNode(true));
+  document.querySelector('#all-item-list').addEventListener('click', (e) => {
+    const target = e.target.closest('.icon-button');
+    if (!target) return;
+    const id = target.dataset.id;
+
+    if (target.classList.contains('fill-btn')) handleFillItem(id);
+    else if (target.classList.contains('view-btn')) renderItemDetailUI(id);
+    else if (target.classList.contains('delete-btn')) handleDeleteItem(id);
+    else if (target.classList.contains('view-btnx')) renderNoteDetailUI(id);
+    else if (target.classList.contains('delete-btnx')) handleDeleteNote(id);
+  });
 }
 
 async function handleDeleteItem(id) {
@@ -212,17 +301,15 @@ async function renderItemDetailUI(id) {
 
             <label for="username">Username</label>
             <div class="input-group">
-                <input type="text" id="username" value="${
-                  item.username
-                }" required />
+                <input type="text" id="username" value="${item.username
+    }" required />
                 <button type="button" class="copy-btn" data-copy-target="username">Copy</button>
             </div>
 
             <label for="password">Password</label>
             <div class="input-group">
-                <input type="password" id="password" value="${
-                  item.password
-                }" required />
+                <input type="password" id="password" value="${item.password
+    }" required />
                 <button type="button" class="icon-button" id="toggle-password">👁️</button>
                 <button type="button" class="copy-btn" data-copy-target="password">Copy</button>
             </div>

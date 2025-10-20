@@ -2,7 +2,7 @@ import * as idbKeyval from 'idb-keyval';
 import '../popup.css';
 import { send } from './messaging.js';
 import { renderFirstRunUI, renderLockedUI } from './ui-renderer.js';
-import { displayVaultItems, displayNoteItems } from './vault-manager.js';
+import { renderBySelection } from './vault-manager.js';
 import { setupUnlockedUIEventListeners } from './event-handlers.js';
 
 let lockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
@@ -153,8 +153,8 @@ function renderUnlockedUI() {
 `;
 
   setupUnlockedUIEventListeners();
-  displayVaultItems();
-  displayNoteItems();
+  renderBySelection('All');
+
 }
 window.init = init;
 window.renderUnlockedUI = renderUnlockedUI;
