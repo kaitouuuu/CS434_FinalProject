@@ -88,9 +88,20 @@ button:hover {
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  max-height: calc(100vh - 200px);
+  height: auto;
   /* adjust 120px = header+tab height */
   overflow-y: auto;
+}
+
+.list {
+  flex: 0 0 auto;
+  background-color: #fff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  height: auto;
+  /* adjust 120px = header+tab height */
+  overflow-y: visible;
 }
 
 .card h4 {
@@ -364,7 +375,6 @@ button:hover {
 }
 
 .screen {
-  padding-bottom: 40px;
   height: 400px;
 }
 

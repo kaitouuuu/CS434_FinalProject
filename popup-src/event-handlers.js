@@ -10,7 +10,7 @@ import {
   loadAutofillSetting,
   loadTimeoutLockSetting
 } from './settings-manager.js';
-
+import { globalState, setGlobalState } from './state.js';
 function setupUnlockedUIEventListeners() {
   const optionMenu = document.querySelector('.select-menu'),
     selectBtn = optionMenu.querySelector('.select-btn'),
@@ -24,6 +24,9 @@ function setupUnlockedUIEventListeners() {
   options.forEach((option) => {
     option.addEventListener('click', () => {
       let selectedOption = option.querySelector('.option-text').innerText;
+      console.log('Selected option:', selectedOption);
+      console.log(typeof selectedOption);
+      setGlobalState(selectedOption);
       sBtn_text.innerText = selectedOption;
       optionMenu.classList.remove('active');
 
@@ -68,7 +71,7 @@ function setupUnlockedUIEventListeners() {
     });
   });
   document.addEventListener('DOMContentLoaded', () => {
-    renderBySelection('All');
+    renderBySelection(globalState);
   });
   document
     .getElementById('generate-btn')

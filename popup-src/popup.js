@@ -4,7 +4,7 @@ import { send } from './messaging.js';
 import { renderFirstRunUI, renderLockedUI } from './ui-renderer.js';
 import { renderBySelection } from './vault-manager.js';
 import { setupUnlockedUIEventListeners } from './event-handlers.js';
-
+import { globalState } from './state.js';
 let lockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
 setInterval(async () => {
   const newLockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
@@ -55,7 +55,7 @@ function renderUnlockedUI() {
       </div>
       <div class="select-menu">
         <div  class = "select-btn">
-          <span class = "sBtn-text" > All </span>
+          <span class = "sBtn-text" > ${globalState} </span>
           <i class = "bx bx-chevron-down"></i>
         </div>
 
@@ -75,7 +75,7 @@ function renderUnlockedUI() {
           </li>
         </ul>
       </div>
-      <div id="DOMContentLoaded" class="card">
+      <div id="DOMContentLoaded" class="list">
         <div id="all-item-list"><p>Loading...</p></div>
         <div id="all-note-list"><p>Loading...</p></div>
       </div>
@@ -153,7 +153,7 @@ function renderUnlockedUI() {
 `;
 
   setupUnlockedUIEventListeners();
-  renderBySelection('All');
+  renderBySelection(globalState);
 
 }
 window.init = init;
