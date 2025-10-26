@@ -1,6 +1,6 @@
 import { send, queryTabs } from './messaging.js';
 import { parse } from 'tldts';
-
+import { globalState } from './state.js';
 function getFaviconUrl(domain) {
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
 }
@@ -238,7 +238,7 @@ async function handleDeleteItem(id) {
   if (!confirm('Are you sure you want to delete this item?')) return;
 
   const res = await send({ type: 'DELETE_ITEM', id });
-  if (res && res.ok) displayVaultItems();
+  if (res && res.ok) renderBySelection(globalState);
   else alert('Failed to delete item.');
 }
 
@@ -247,7 +247,7 @@ async function handleDeleteNote(id) {
   if (!confirm('Are you sure you want to delete this note?')) return;
 
   const res = await send({ type: 'DELETE_NOTE', id });
-  if (res && res.ok) displayNoteItems();
+  if (res && res.ok) renderBySelection(globalState);
   else alert('Failed to delete note.');
 }
 

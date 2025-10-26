@@ -88,7 +88,7 @@ button:hover {
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  height: auto;
+  max-height: calc(100vh - 200px);
   /* adjust 120px = header+tab height */
   overflow-y: auto;
 }
@@ -99,7 +99,6 @@ button:hover {
   border-radius: 8px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  height: auto;
   /* adjust 120px = header+tab height */
   overflow-y: visible;
 }
@@ -374,9 +373,10 @@ button:hover {
   text-align: left;
 }
 
-/* .screen {
+.screen {
+  padding-bottom: 40px;
   height: 400px;
-} */
+}
 
 .btn-wrapper {
   text-align: center;
@@ -544,8 +544,7 @@ button:hover {
   padding: 0;
   list-style: none;
   position: absolute;
-  border: 1px solid #bbb;
-  /* visible border around */
+  border-bottom: 1px solid #eee;
   cursor: pointer;
 }
 
@@ -560,6 +559,7 @@ button:hover {
   cursor: pointer;
   padding: 0 16px;
   background: #fff;
+  border-radius: 8px;
 }
 
 .options .option:hover {

@@ -5,6 +5,10 @@ import { renderFirstRunUI, renderLockedUI } from './ui-renderer.js';
 import { renderBySelection } from './vault-manager.js';
 import { setupUnlockedUIEventListeners } from './event-handlers.js';
 import { globalState } from './state.js';
+
+// *** 1. IMPORT THE HTML FILE AS A STRING ***
+import unlockedHtml from './unlocked-ui.html';
+
 let lockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
 setInterval(async () => {
   const newLockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
@@ -26,136 +30,24 @@ async function init() {
   }
 }
 
+// *** 2. UPDATED FUNCTION ***
 function renderUnlockedUI() {
   const app = document.getElementById('app');
-  app.innerHTML = `
-  <div class="container">
-    <div id="screen-main" class="screen">
-      <div class="header">
-        <h3>My Vault</h3>
-        <div class="btn-group">
-          <div class="menu-item">
-            <button id="add-btn">
-              <i class="fa-solid fa-plus"></i>
-            </button>
-            <ul id="dropdown" class="dropdown">
-              <li><button id ="add-login-btn">Password</button></li>
-              <li><button id ="note-btn">Note</button></li>
-            </ul>
-            <button id="lock-btn">
-              <i class="fa-solid fa-lock"></i>
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div class="card">
-        <h4>Logins for this site</h4>
-        <div id="current-item-list"><p>Loading...</p></div>
-      </div>
-      <div class="select-menu">
-        <div  class = "select-btn">
-          <span class = "sBtn-text" > ${globalState} </span>
-          <i class = "bx bx-chevron-down"></i>
-        </div>
+  // Set the innerHTML from the imported file
+  app.innerHTML = unlockedHtml;
 
-        <ul class="options">
-          <li  class = "option">
-            <i class ="fa-solid fa-check" style="color: black; font-size: 10px;"></i>
-            <span class ="option-text">All</span>
-          </li>
-          <li  class = "option">
-            <i class ="bi bi-lock" style="color: black; font-size: 10px;"></i>
-            <span class ="option-text">Password</span>
-          </li>
-        
-          <li  class  = "option">
-            <i class ="fa-regular fa-note-sticky" style="color: black; font-size: 10px;"></i>
-            <span class ="option-text">Note</span>
-          </li>
-        </ul>
-      </div>
-      <div id="DOMContentLoaded" class="list">
-        <div id="all-item-list"><p>Loading...</p></div>
-        <div id="all-note-list"><p>Loading...</p></div>
-      </div>
-    </div>
+  // Now, manually set the dynamic value that was a template literal
+  const sBtnText = app.querySelector('.sBtn-text');
+  if (sBtnText) {
+    sBtnText.textContent = globalState;
+  }
 
-    <div id="screen-password" class="screen" style="display:none;">
-      <div class="header">
-        <h3>Password Generator</h3>
-      </div>
-      <div class="card">
-        <label>Length: <input type="number" id="pw-length" value="16" min="6" max="200000"></label>
-
-        <div class="checkbox-group">
-          <label>
-            <input type="checkbox" id="include-lowercase" checked> Include lowercase letters (a-z)
-          </label>
-          <label>
-            <input type="checkbox" id="include-uppercase" checked> Include uppercase letters (A-Z)
-          </label>
-          <label>
-            <input type="checkbox" id="include-special" checked> Include special characters (!@#$%^&*)
-          </label>
-          <label>
-            <input type="checkbox" id="include-digits" checked> Include digits (0-9)
-          </label>
-          <label>
-            <input type="checkbox" id="include-similar" checked> Avoid similar characters (i.e. O0oIl1|&#96;\'"~;:.,{}[]()<>\/)
-          </label>
-          <label>
-            <input type="checkbox" id="include-require" checked> Require each selected character type
-          </label>
-        </div>
-
-        <div class="btn-wrapper">
-          <button id="generate-btn">Generate Password</button>
-        </div>
-
-        <div class="password-output">
-          <div class="input-group">
-            <input type="text" id="generated-password" readonly placeholder="Ex: abc123, Qw3rt!">
-            <button type="button" class="copy-btn" id="copy-password-btn" disabled>Copy</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="screen-settings" class="screen" style="display:none;">
-        <div class="header">
-            <h3>Settings</h3>
-        </div>
-        <div class="card">
-            <div class="setting-item">
-                <label>
-                    <input type="checkbox" id="autofill-setting"> Enable Autofill
-                </label>
-                <p class="setting-description">Automatically fill login forms when visiting websites</p>
-            </div>
-        </div>
-        <div class="card">
-            <button id="change-password-btn" class="settings-button">Change Master Password</button>
-        </div>
-        <div class="card" id="timeout-lock-label-wrapper">
-          <label for="timeout-lock">Auto-Lock Timeout (minutes):</label>
-          <input type="number" id="timeout-lock" min="1" value="5">
-        </div>
-    </div>
-
-    <!-- Tab navigator -->
-    <div class="tab-bar">
-      <button class="tab-btn active" data-screen="screen-main">Vault</button>
-      <button class="tab-btn" data-screen="screen-password">Generator</button>
-      <button class="tab-btn" data-screen="screen-settings">Settings</button>
-    </div>
-  </div>
-`;
-
+  // Run the rest of your setup logic
   setupUnlockedUIEventListeners();
   renderBySelection(globalState);
-
 }
+
 window.init = init;
 window.renderUnlockedUI = renderUnlockedUI;
 
