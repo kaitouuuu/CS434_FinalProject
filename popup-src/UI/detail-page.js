@@ -1,4 +1,4 @@
-import { send, queryTabs } from '../messaging.js';
+import { send } from '../messaging.js';
 import editItemHtml from './edit-item-ui.html';
 import editNoteHtml from './edit-note-ui.html';
 

@@ -121,6 +121,11 @@ async function displayNoteItems() {
 async function renderBySelection(selection) {
   const vaultContainer = document.querySelector('#all-item-list');
   const noteContainer = document.querySelector('#all-note-list');
+  const options = [
+    document.querySelector('#all'),
+    document.querySelector('#password'),
+    document.querySelector('#note')
+  ];
 
   vaultContainer.innerHTML = '';
   noteContainer.innerHTML = '';
@@ -135,11 +140,19 @@ async function renderBySelection(selection) {
     matchingItems,
     'No logins for this site.'
   );
+
+  options.forEach(opt => {
+    opt.classList.remove('selected');
+  });
+
   if (selection === 'All') {
+    options[0].classList.add('selected');
     await displayAllItems();
   } else if (selection === 'Password') {
+    options[1].classList.add('selected');
     await displayVaultItems();
   } else if (selection === 'Note') {
+    options[2].classList.add('selected');
     await displayNoteItems();
   }
 }
