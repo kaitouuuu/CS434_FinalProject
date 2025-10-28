@@ -2,12 +2,12 @@ import * as idbKeyval from 'idb-keyval';
 import '../popup.css';
 import { send } from './messaging.js';
 import { renderFirstRunUI, renderLockedUI } from './ui-renderer.js';
-import { renderBySelection } from './vault-manager.js';
+import { renderBySelection } from './UI/vault-manager.js';
 import { setupUnlockedUIEventListeners } from './event-handlers.js';
 import { globalState } from './state.js';
 
 // *** 1. IMPORT THE HTML FILE AS A STRING ***
-import unlockedHtml from './unlocked-ui.html';
+import unlockedHtml from './UI/unlocked-ui.html';
 
 let lockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
 setInterval(async () => {

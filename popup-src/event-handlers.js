@@ -1,5 +1,5 @@
 import { send } from './messaging.js';
-import { renderBySelection } from './vault-manager.js';
+import { renderBySelection } from './UI/vault-manager.js';
 import {
   renderAddNoteUI,
   renderAddLoginUI,
