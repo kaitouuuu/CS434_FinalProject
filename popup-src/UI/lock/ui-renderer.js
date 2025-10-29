@@ -27,7 +27,6 @@ function renderFirstRunUI() {
 
     .container {
       max-width: 380px;
-      width: 90%;
       background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(12px);
       border-radius: 16px;
