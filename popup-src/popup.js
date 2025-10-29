@@ -1,7 +1,7 @@
 import * as idbKeyval from 'idb-keyval';
 import '../popup.css';
 import { send } from './messaging.js';
-import { renderFirstRunUI, renderLockedUI } from './ui-renderer.js';
+import { renderFirstRunUI, renderLockedUI } from './UI/lock/ui-renderer.js';
 import { renderBySelection } from './UI/vault-manager.js';
 import { setupUnlockedUIEventListeners } from './event-handlers.js';
 import { globalState } from './state.js';

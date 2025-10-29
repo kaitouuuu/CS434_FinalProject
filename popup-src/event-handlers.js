@@ -3,7 +3,7 @@ import { renderBySelection } from './UI/vault-manager.js';
 import {
   renderAddNoteUI,
   renderAddLoginUI,
-} from './ui-renderer.js';
+} from './UI/lock/ui-renderer.js';
 import { renderChangePasswordUI } from './settings.js';
 import { handleGeneratePassword } from './password-generator.js';
 import {
