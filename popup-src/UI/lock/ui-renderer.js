@@ -26,7 +26,7 @@ function renderFirstRunUI() {
     }
 
     .container {
-      max-width: 380px;
+      max-width: 360px;
       background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(12px);
       border-radius: 16px;
@@ -243,13 +243,57 @@ function renderFirstRunUI() {
 function renderLockedUI() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="container">
-      <h3>Vault Locked</h3>
-      <form id="unlock-form">
-        <input type="password" id="master" placeholder="Master Password" required />
-        <button type="submit">Unlock</button>
-      </form>
-    </div>
+  <style>.lock-screen-container {
+  width: 340px;
+  padding: 10px;
+  margin : 10px 0 10px 0;
+  height: 440px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  animation: fadeIn 0.5s ease forwards;
+  text-align: center; /* Center the icon and text */
+}
+
+/* Icon for the lock screen */
+
+.lock-screen-container .vault-icon {
+  font-size: 2.2em;
+  margin-bottom: 10px;
+  color: #4f46e5;
+  text-shadow: 0 2px 6px rgba(79,70,229,0.3);
+}
+
+/* Headers and text inside the lock screen */
+.lock-screen-container h3 {
+  text-align: center;
+  margin-bottom: 6px;
+}
+.lock-screen-container p {
+  text-align: center;
+  font-size: 0.95em;
+  margin-bottom: 20px;
+}
+
+/* Ensure form elements inside use 100% width */
+.lock-screen-container form {
+  width: 100%;
+
+}
+.unlock-form {
+  margin-top: 20px;
+}
+  </style>
+<div class="lock-screen-container">
+  <img src="icons/icon128.png" alt="Vault Icon" class="vault-icon-img">
+  <h3>Vault Locked</h3>
+  <p>Enter your Master Password to unlock.</p>
+  <form id="unlock-form">
+    <input type="password" id="master" placeholder="Master Password" required />
+    <button type="submit">Unlock</button>
+  </form>
+</div>
   `;
 
   document
