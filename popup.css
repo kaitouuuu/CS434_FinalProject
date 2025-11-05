@@ -2,13 +2,19 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
     Arial, sans-serif;
   margin: 0;
-  width: 320px;
+  width: 360px;
+  padding: 0 0 40px 0;
   background-color: #f4f6f8;
 }
 
 .container {
   padding: 16px;
   overflow-y: auto;
+  height: 440px;
+}
+
+#unlock-form {
+  margin-top: 180px;
 }
 
 h3 {
@@ -87,6 +93,19 @@ button:hover {
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  max-height: calc(100vh - 200px);
+  /* adjust 120px = header+tab height */
+  overflow-y: auto;
+}
+
+.list {
+  flex: 0 0 auto;
+  background-color: #fff;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  /* adjust 120px = header+tab height */
+  overflow-y: visible;
 }
 
 .card h4 {
@@ -121,6 +140,14 @@ button:hover {
 .item-info {
   display: flex;
   flex-direction: column;
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  /* keeps icon + text aligned vertically */
+  gap: 8px;
+  /* space between icon and text */
 }
 
 .item-title {
@@ -516,18 +543,28 @@ button:hover {
 }
 
 .select-menu .options {
-  display: none;
-  margin: 0;
-  /* remove gap */
-  padding: 0;
+  margin: 8px 0 0 0;
+  padding: 8px 0;
   list-style: none;
   position: absolute;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: all 0.3s ease-out;
 }
 
 .select-menu.active .options {
-  display: block
+  max-height: 300px;
+  overflow-y: auto;
+  opacity: 1;
 }
 
 .options .option {
@@ -547,9 +584,21 @@ button:hover {
 .option i {
   font-size: 25px;
   margin-right: 12px;
+  color: #666;
+}
+
+.option i.selected {
+  color: #15ff00 !important;
 }
 
 .option .option-text {
   font-weight: 500;
   color: #333;
+}
+
+.favicon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  margin-right: 8px;
 }
