@@ -374,12 +374,13 @@ class StateManager {
     const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(MEK, {
       content,
     });
-    const newNote = { id: nanoId.nanoid(), title, iv, ciphertext };
+    const dateAdded = new Date().toISOString();
+    const newNote = { id: nanoId.nanoid(), title, iv, ciphertext, dateAdded };
     let notes = (await idbKeyval.get("notes")) || [];
     notes.push(newNote);
     await idbKeyval.set("notes", notes);
     this.notesCache = notes;
-    return { ok: true, id: newNote.id };
+    return { ok: true, id: newNote.id, dateAdded };
   }
 
   async checkNewLogin(domain, username, password) {
