@@ -191,8 +191,6 @@ async function fetchAllAndCombinedItems() {
     ...noteItems.map(item => ({ ...item, kind: 'note' }))
   ];
 
-  combinedItems.sort(() => Math.random())
-
   // Sort by time (descending)
   combinedItems.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
 

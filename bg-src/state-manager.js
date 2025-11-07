@@ -312,7 +312,7 @@ class StateManager {
     const MEK = await getMEK();
     if (!MEK) return [];
     const notes = await this.getNotesCache();
-    return notes.map((n) => ({ id: n.id, title: n.title }));
+    return notes.map((n) => ({ id: n.id, title: n.title, dateAdded: n.dateAdded }));
   }
 
   async getNote(id) {
