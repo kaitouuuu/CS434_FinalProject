@@ -1,8 +1,8 @@
-import * as idbKeyval from 'idb-keyval';
-import * as nanoId from 'nanoid';
-import cryptoHelper from './crypto-helper.js';
-import * as tldts from 'tldts';
-import { setMEK, getMEK, clearMEK } from './mek-store.js';
+import * as idbKeyval from "idb-keyval";
+import * as nanoId from "nanoid";
+import cryptoHelper from "./crypto-helper.js";
+import * as tldts from "tldts";
+import { setMEK, getMEK, clearMEK } from "./mek-store.js";
 
 class StateManager {
   constructor() {
@@ -11,18 +11,18 @@ class StateManager {
   }
 
   async getVaultCache() {
-    if (!this.vaultCache) this.vaultCache = await idbKeyval.get('vault');
+    if (!this.vaultCache) this.vaultCache = await idbKeyval.get("vault");
     return this.vaultCache;
   }
 
   async getNotesCache() {
-    if (!this.notesCache) this.notesCache = await idbKeyval.get('notes');
+    if (!this.notesCache) this.notesCache = await idbKeyval.get("notes");
     return this.notesCache;
   }
 
   async decryptItem(item) {
     const MEK = await getMEK();
-    if (!MEK) throw new Error('Locked');
+    if (!MEK) throw new Error("Locked");
     const data = await cryptoHelper.aesGcmDecrypt(
       MEK,
       item.iv,
@@ -34,23 +34,23 @@ class StateManager {
   async setMaster(master) {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const MEK = await cryptoHelper.deriveKeyPBKDF2(master, salt);
-    const verifier = await cryptoHelper.hmacVerify(MEK, 'verify');
+    const verifier = await cryptoHelper.hmacVerify(MEK, "verify");
     this.vaultCache = {
       kdf: { salt: btoa(String.fromCharCode(...salt)), iter: 200000 },
       verifier: btoa(String.fromCharCode(...new Uint8Array(verifier))),
-      items: []
+      items: [],
     };
     this.notesCache = [];
-    await idbKeyval.set('vault', this.vaultCache);
-    await idbKeyval.set('notes', this.notesCache);
-    await idbKeyval.set('autofillSetting', true);
-    await idbKeyval.set('timeoutLock', 5);
+    await idbKeyval.set("vault", this.vaultCache);
+    await idbKeyval.set("notes", this.notesCache);
+    await idbKeyval.set("autofillSetting", true);
+    await idbKeyval.set("timeoutLock", 5);
     await setMEK(MEK);
     return { ok: true };
   }
 
   async unlock(master) {
-    const vault = await idbKeyval.get('vault');
+    const vault = await idbKeyval.get("vault");
     if (!vault) return { ok: false };
     const salt = Uint8Array.from(atob(vault.kdf.salt), (c) => c.charCodeAt(0));
     const key = await cryptoHelper.deriveKeyPBKDF2(
@@ -58,12 +58,12 @@ class StateManager {
       salt,
       vault.kdf.iter
     );
-    const v2 = await cryptoHelper.hmacVerify(key, 'verify');
+    const v2 = await cryptoHelper.hmacVerify(key, "verify");
     const v2_b64 = btoa(String.fromCharCode(...new Uint8Array(v2)));
     if (v2_b64 === vault.verifier) {
       await setMEK(key);
       this.vaultCache = vault;
-      this.notesCache = (await idbKeyval.get('notes')) || [];
+      this.notesCache = (await idbKeyval.get("notes")) || [];
       return { ok: true };
     } else {
       return { ok: false };
@@ -76,12 +76,20 @@ class StateManager {
     const { domain, title, username, password } = item;
     const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(MEK, {
       u: username,
-      p: password
+      p: password,
     });
-    const newItem = { id: nanoId.nanoid(), title, domain, iv, ciphertext };
+    const dateAdded = new Date().toISOString();
+    const newItem = {
+      id: nanoId.nanoid(),
+      title,
+      domain,
+      iv,
+      ciphertext,
+      dateAdded,
+    };
     this.vaultCache.items.push(newItem);
-    await idbKeyval.set('vault', this.vaultCache);
-    return { ok: true };
+    await idbKeyval.set("vault", this.vaultCache);
+    return { ok: true, dateAdded };
   }
 
   async match(domain) {
@@ -105,7 +113,7 @@ class StateManager {
             id: item.id,
             title: item.title,
             domain: item.domain,
-            username: data.u
+            username: data.u,
           };
         } catch {
           return null;
@@ -145,13 +153,13 @@ class StateManager {
       const MEK = await getMEK();
       const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(MEK, {
         u: newData.username,
-        p: newData.password
+        p: newData.password,
       });
       updated = { ...updated, iv, ciphertext };
     }
     updated = { ...updated, ...newData };
     this.vaultCache.items[idx] = updated;
-    await idbKeyval.set('vault', this.vaultCache);
+    await idbKeyval.set("vault", this.vaultCache);
     return { ok: true };
   }
 
@@ -160,7 +168,7 @@ class StateManager {
     const newItems = this.vaultCache.items.filter((item) => item.id !== id);
     if (newItems.length === this.vaultCache.items.length) return { ok: false };
     this.vaultCache.items = newItems;
-    await idbKeyval.set('vault', this.vaultCache);
+    await idbKeyval.set("vault", this.vaultCache);
     return { ok: true };
   }
 
@@ -171,9 +179,9 @@ class StateManager {
     digits = false,
     special = false,
     avoidSimilar = true,
-    requireEachSelected = true
+    requireEachSelected = true,
   } = {}) {
-    const { generatePassword } = require('./password-generator.js');
+    const { generatePassword } = require("./password-generator.js");
     return generatePassword({
       length,
       uppercase,
@@ -181,37 +189,37 @@ class StateManager {
       digits,
       special,
       avoidSimilar,
-      requireEachSelected
+      requireEachSelected,
     });
   }
 
   async changeMasterPassword(oldMaster, newMaster) {
-    const vault = await idbKeyval.get('vault');
-    if (!vault) return { ok: false, error: 'No vault' };
+    const vault = await idbKeyval.get("vault");
+    if (!vault) return { ok: false, error: "No vault" };
     const salt = Uint8Array.from(atob(vault.kdf.salt), (c) => c.charCodeAt(0));
     const key = await cryptoHelper.deriveKeyPBKDF2(
       oldMaster,
       salt,
       vault.kdf.iter
     );
-    const v2 = await cryptoHelper.hmacVerify(key, 'verify');
+    const v2 = await cryptoHelper.hmacVerify(key, "verify");
     const v2_b64 = btoa(String.fromCharCode(...new Uint8Array(v2)));
     if (v2_b64 !== vault.verifier)
-      return { ok: false, error: 'Old master incorrect' };
+      return { ok: false, error: "Old master incorrect" };
 
     const newKeyTest = await cryptoHelper.deriveKeyPBKDF2(
       newMaster,
       salt,
       vault.kdf.iter
     );
-    const newVerifierTest = await cryptoHelper.hmacVerify(newKeyTest, 'verify');
+    const newVerifierTest = await cryptoHelper.hmacVerify(newKeyTest, "verify");
     const newVerifierTest_b64 = btoa(
       String.fromCharCode(...new Uint8Array(newVerifierTest))
     );
     if (newVerifierTest_b64 === vault.verifier) {
       return {
         ok: false,
-        error: 'New master must be different from old master'
+        error: "New master must be different from old master",
       };
     }
 
@@ -221,7 +229,7 @@ class StateManager {
       newSalt,
       vault.kdf.iter
     );
-    const newVerifier = await cryptoHelper.hmacVerify(newKey, 'verify');
+    const newVerifier = await cryptoHelper.hmacVerify(newKey, "verify");
     vault.kdf.salt = btoa(String.fromCharCode(...newSalt));
     vault.verifier = btoa(String.fromCharCode(...new Uint8Array(newVerifier)));
 
@@ -236,7 +244,7 @@ class StateManager {
       } catch {
         return {
           ok: false,
-          error: 'Failed to decrypt item during password change'
+          error: "Failed to decrypt item during password change",
         };
       }
       const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(
@@ -247,7 +255,7 @@ class StateManager {
       vault.items[i].ciphertext = ciphertext;
     }
 
-    let notes = (await idbKeyval.get('notes')) || [];
+    let notes = (await idbKeyval.get("notes")) || [];
     for (let i = 0; i < notes.length; i++) {
       let decrypted;
       try {
@@ -259,7 +267,7 @@ class StateManager {
       } catch {
         return {
           ok: false,
-          error: 'Failed to decrypt note during password change'
+          error: "Failed to decrypt note during password change",
         };
       }
       const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(
@@ -269,9 +277,9 @@ class StateManager {
       notes[i].iv = iv;
       notes[i].ciphertext = ciphertext;
     }
-    await idbKeyval.set('notes', notes);
+    await idbKeyval.set("notes", notes);
 
-    await idbKeyval.set('vault', vault);
+    await idbKeyval.set("vault", vault);
     await setMEK(newKey);
     this.vaultCache = vault;
     this.notesCache = notes;
@@ -280,23 +288,23 @@ class StateManager {
   }
 
   async getAutofillSetting() {
-    const setting = await idbKeyval.get('autofillSetting');
+    const setting = await idbKeyval.get("autofillSetting");
     return { ok: !!setting };
   }
 
   async toggleAutofillSetting() {
-    const current = await idbKeyval.get('autofillSetting');
-    await idbKeyval.set('autofillSetting', !current);
+    const current = await idbKeyval.get("autofillSetting");
+    await idbKeyval.set("autofillSetting", !current);
     return { ok: true, value: !current };
   }
 
   async getTimeoutLock() {
-    const timeout = await idbKeyval.get('timeoutLock');
+    const timeout = await idbKeyval.get("timeoutLock");
     return { ok: true, timeout };
   }
 
   async setTimeoutLock(timeout) {
-    await idbKeyval.set('timeoutLock', timeout);
+    await idbKeyval.set("timeoutLock", timeout);
     return { ok: true };
   }
 
@@ -310,7 +318,7 @@ class StateManager {
   async getNote(id) {
     const MEK = await getMEK();
     if (!MEK) return { ok: false };
-    const notes = (await idbKeyval.get('notes')) || [];
+    const notes = (await idbKeyval.get("notes")) || [];
     const note = notes.find((n) => n.id === id);
     if (!note) return { ok: false };
     let data;
@@ -324,27 +332,27 @@ class StateManager {
       item: {
         id: note.id,
         title: note.title,
-        content: data.content
-      }
+        content: data.content,
+      },
     };
   }
 
   async setNote(noteData) {
     const MEK = await getMEK();
     if (!MEK) return { ok: false };
-    let notes = (await idbKeyval.get('notes')) || [];
+    let notes = (await idbKeyval.get("notes")) || [];
     const idx = notes.findIndex((n) => n.id === noteData.id);
     if (idx === -1) return { ok: false };
     const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(MEK, {
-      content: noteData.content
+      content: noteData.content,
     });
     notes[idx] = {
       ...notes[idx],
       title: noteData.title,
       iv,
-      ciphertext
+      ciphertext,
     };
-    await idbKeyval.set('notes', notes);
+    await idbKeyval.set("notes", notes);
     this.notesCache = notes;
     return { ok: true };
   }
@@ -352,10 +360,10 @@ class StateManager {
   async deleteNote(id) {
     const MEK = await getMEK();
     if (!MEK) return { ok: false };
-    let notes = (await idbKeyval.get('notes')) || [];
+    let notes = (await idbKeyval.get("notes")) || [];
     const newNotes = notes.filter((n) => n.id !== id);
     if (newNotes.length === notes.length) return { ok: false };
-    await idbKeyval.set('notes', newNotes);
+    await idbKeyval.set("notes", newNotes);
     this.notesCache = newNotes;
     return { ok: true };
   }
@@ -364,37 +372,37 @@ class StateManager {
     const MEK = await getMEK();
     if (!MEK) return { ok: false };
     const { iv, ciphertext } = await cryptoHelper.aesGcmEncrypt(MEK, {
-      content
+      content,
     });
     const newNote = { id: nanoId.nanoid(), title, iv, ciphertext };
-    let notes = (await idbKeyval.get('notes')) || [];
+    let notes = (await idbKeyval.get("notes")) || [];
     notes.push(newNote);
-    await idbKeyval.set('notes', notes);
+    await idbKeyval.set("notes", notes);
     this.notesCache = notes;
     return { ok: true, id: newNote.id };
   }
 
   async checkNewLogin(domain, username, password) {
     const MEK = await getMEK();
-    if (!MEK || !this.vaultCache) return { msg: 'NEW' };
+    if (!MEK || !this.vaultCache) return { msg: "NEW" };
     const inputDomain = tldts.getDomain(domain);
     const found = this.vaultCache.items.find((item) => {
       const vaultDomain = tldts.getDomain(item.domain);
       return vaultDomain === inputDomain;
     });
-    if (!found) return { msg: 'NEW' };
+    if (!found) return { msg: "NEW" };
     let data;
     try {
       data = await cryptoHelper.aesGcmDecrypt(MEK, found.iv, found.ciphertext);
     } catch {
-      return { msg: 'NEW' };
+      return { msg: "NEW" };
     }
     if (data.u === username && data.p === password) {
-      return { msg: 'UNCHANGED' };
+      return { msg: "UNCHANGED" };
     } else if (data.u === username) {
-      return { msg: 'UPDATE', id: found.id };
+      return { msg: "UPDATE", id: found.id };
     } else {
-      return { msg: 'NEW' };
+      return { msg: "NEW" };
     }
   }
 }
