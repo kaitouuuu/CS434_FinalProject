@@ -5,3 +5,13 @@ export let globalState = 'All';
 export function setGlobalState(newState) {
     globalState = newState;
 }
+
+export let hostname = '';
+export async function setHostname(newHostname) {
+    hostname = newHostname;
+    console.log('Hostname set to:', hostname);
+}
+export function getHostname() {
+    console.log('Getting hostname:', hostname);
+    return hostname;
+}

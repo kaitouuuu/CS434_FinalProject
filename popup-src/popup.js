@@ -6,9 +6,7 @@ import { renderBySelection } from './UI/vault-manager.js';
 import { setupUnlockedUIEventListeners } from './event-handlers.js';
 import { globalState } from './state.js';
 
-// *** 1. IMPORT THE HTML FILE AS A STRING ***
-import unlockedHtml from './UI/unlocked-ui.html';
-
+import { unlockedHtml } from './UI/lock/unlocked-ui.js';
 let lockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
 setInterval(async () => {
   const newLockState = (await send({ type: 'GET_LOCK_STATE' })).ok;
@@ -30,7 +28,7 @@ async function init() {
   }
 }
 
-// *** 2. UPDATED FUNCTION ***
+
 function renderUnlockedUI() {
   const app = document.getElementById('app');
 

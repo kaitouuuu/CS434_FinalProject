@@ -1,25 +1,12 @@
 import { send, queryTabs } from './messaging.js';
 import { parse } from 'tldts';
-
+import { registerUI, loginUI } from './UI/lock/authentication-ui.js';
+import { addNoteUI } from './UI/add-ui.js';
+import { setHostname } from './state.js';
+import { set } from 'idb-keyval';
 function renderFirstRunUI() {
   const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="container" style="max-width:400px; margin:auto; font-family:sans-serif;">
-      <h3>Welcome!</h3>
-      <p>Create a Master Password to secure your vault.</p>
-      <form id="setup-form">
-        <input type="password" id="m1" placeholder="Master Password" required style="width:100%; padding:8px; margin:5px 0;" />
-        <div id="checklist" style="font-size:0.9em; margin-bottom:10px;">
-          <div id="len" style="color:red;">❌ At least 8 characters</div>
-          <div id="upper" style="color:red;">❌ Has uppercase letter</div>
-          <div id="special" style="color:red;">❌ Has special character</div>
-        </div>
-        <input type="password" id="m2" placeholder="Confirm Password" required style="width:100%; padding:8px; margin:5px 0;" />
-        <div id="match" style="font-size:0.9em; color:red; height:18px;"></div>
-        <button type="submit" style="width:100%; padding:10px; margin-top:10px;">Create Vault</button>
-      </form>
-    </div>
-  `;
+  app.innerHTML = registerUI;
 
   const m1 = document.getElementById('m1');
   const m2 = document.getElementById('m2');
@@ -106,19 +93,9 @@ function renderFirstRunUI() {
   });
 }
 
-
-
 function renderLockedUI() {
   const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="container">
-      <h3>Vault Locked</h3>
-      <form id="unlock-form">
-        <input type="password" id="master" placeholder="Master Password" required />
-        <button type="submit">Unlock</button>
-      </form>
-    </div>
-  `;
+  app.innerHTML = loginUI;
 
   document
     .getElementById('unlock-form')
@@ -136,23 +113,122 @@ async function renderAddLoginUI() {
 
   const [tab] = await queryTabs({ active: true, currentWindow: true });
   const currentHostname = tab ? parse(tab.url).hostname : '';
-
   app.innerHTML = `
-    <div class="container">
-        <div class="header">
-            <button id="back-btn" class="back-button">← Back</button>
-            <h3>Add New Login</h3>
-        </div>
-        <form id="add-login-form" class="add-login-form">
-            <input type="text" id="title" placeholder="Title (e.g., Google)" />
-            <input type="text" id="domain" placeholder="Domain (e.g., google.com)" value="${currentHostname}" required />
-            <input type="text" id="username" placeholder="Username/Email" required />
-            <input type="password" id="password" placeholder="Password" required />
-            <button type="submit" class="save-button">Save Login</button>
-        </form>
-    </div>
-  `;
+  <style>
+  /* --- Add Login Screen Container --- */
+.add-login-container {
+  width: 340px;
+  padding: 10px;
+  margin: 10px 0;
+  height: 440px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.5s ease forwards;
+  display: flex;
+  flex-direction: column;
+}
 
+/* --- Header --- */
+.add-login-container .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.add-login-container .header h3 {
+  margin: 0;
+  font-size: 1.4em;
+  color: #1e293b;
+}
+
+.add-login-container .back-button {
+  background: transparent;
+  border: none;
+  color: #4f46e5;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.add-login-container .back-button:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* --- Form --- */
+.add-login-container .add-login-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Inputs (inherit same glass style as global) */
+.add-login-container .add-login-form input[type="text"],
+.add-login-container .add-login-form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin: 8px 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.95em;
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.9);
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.add-login-container .add-login-form input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Save button — consistent with global button style */
+.add-login-container .save-button {
+  margin-top: auto;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 1em;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.add-login-container .save-button:hover {
+  background: linear-gradient(90deg, #4f46e5, #2563eb);
+  animation: glow 0.4s alternate infinite;
+}
+
+.add-login-container .save-button:active {
+  transform: scale(0.97);
+}
+</style>
+<div class="add-login-container">
+  <div class="header">
+    <button id="back-btn" class="back-button">← Back</button>
+    <h3>Add New Login</h3>
+  </div>
+
+  <form id="add-login-form" class="add-login-form">
+    <input type="text" id="title" placeholder="Title (e.g., Google)" />
+    <input type="text" id="domain" placeholder="Domain (e.g., google.com)" value="${currentHostname}" required />
+    <input type="text" id="username" placeholder="Username/Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit" class="save-button">Save Login</button>
+  </form>
+</div>
+
+  `;
   document
     .getElementById('back-btn')
     .addEventListener('click', () => window.renderUnlockedUI());
@@ -179,19 +255,7 @@ async function renderAddLoginUI() {
 async function renderAddNoteUI() {
   const app = document.getElementById('app');
 
-  app.innerHTML = `
-    <div class="container">
-        <div class="header">
-            <button id="back-btn" class="back-button">← Back</button>
-            <h3>Add New Note</h3>
-        </div>
-        <form id="add-login-form" class="add-login-form">
-            <input type="text" id="title" placeholder="Title (e.g., My birthday)" />
-            <div id="content" contenteditable="true" data-placeholder="1/1/1970"></div>
-            <button type="submit" class="save-button">Save Note</button>
-        </form>
-    </div>
-  `;
+  app.innerHTML = addNoteUI;
 
   document
     .getElementById('back-btn')

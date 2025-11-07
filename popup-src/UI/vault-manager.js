@@ -192,7 +192,7 @@ async function fetchAllAndCombinedItems() {
   ];
 
   // Sort by time (descending)
-  combinedItems.sort((a, b) => new Date(b.time) - new Date(a.time));
+  combinedItems.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
 
   return combinedItems;
 }

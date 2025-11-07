@@ -70,6 +70,7 @@ async function handleGetVault(msg, sendResponse) {
           title: item.title,
           domain: item.domain,
           username: data.u,
+          dateAdded: item.dateAdded,
         };
       } catch {
         return null;
